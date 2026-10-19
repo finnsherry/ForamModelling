@@ -1,0 +1,9 @@
+{
+  "single_seed_matches_previous_pixel_geometry_exactly": true,
+  "two_seed_labels_remain_fixed": true,
+  "new_growth_starts_from_second_initial_chamber": true,
+  "unequal_seed_radii_and_rotated_seed_tested": true,
+  "tested_second_radius_ratio": 0.85,
+  "tested_seed_rotation_degrees": 30,
+  "max_diffuse_area_error": 1.6653345369377348e-16
+}

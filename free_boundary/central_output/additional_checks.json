@@ -1,0 +1,11 @@
+{
+  "adhesion_changes_geometry_pixels": 264,
+  "all_parent_contacts_verified": true,
+  "fixed_central_wall_verified": true,
+  "custom_target_areas_tested": [
+    0.3,
+    0.39
+  ],
+  "refined_spacing_tested": 0.02,
+  "maximum_diffuse_error_tested": 1.6653345369377348e-16
+}

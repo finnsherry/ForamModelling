@@ -1,0 +1,1429 @@
+(* Content-type: application/vnd.wolfram.mathematica *)
+
+(*** Wolfram Notebook File ***)
+(* http://www.wolfram.com/nb *)
+
+(* CreatedBy='Wolfram 15.0' *)
+
+(*CacheID: 234*)
+(* Internal cache information:
+NotebookFileLineBreakTest
+NotebookFileLineBreakTest
+NotebookDataPosition[       154,          7]
+NotebookDataLength[     49895,       1419]
+NotebookOptionsPosition[     46766,       1367]
+NotebookOutlinePosition[     47196,       1384]
+CellTagsIndexPosition[     47153,       1381]
+WindowFrame->Normal*)
+
+(* Beginning of Notebook Content *)
+Notebook[{
+
+Cell[CellGroupData[{
+Cell["SIM(2)", "Title",ExpressionUUID->"f9fb0fb2-8e2b-4da1-a436-450404bca3ca"],
+
+Cell[BoxData[{
+ RowBox[{
+  RowBox[{
+   RowBox[{"SIM2Visualisation", "[", "]"}], ":=", 
+   RowBox[{"Manipulate", "[", "\[IndentingNewLine]", 
+    RowBox[{
+     RowBox[{"Module", "[", 
+      RowBox[{
+       RowBox[{"{", 
+        RowBox[{"pts", ",", "transformed", ",", "R", ",", 
+         RowBox[{"colorOriginal", "=", "Red"}], ",", 
+         RowBox[{"colorTransformed", "=", "Blue"}]}], "}"}], ",", 
+       "\[IndentingNewLine]", 
+       RowBox[{
+        RowBox[{"pts", "=", 
+         RowBox[{"{", 
+          RowBox[{
+           RowBox[{"{", 
+            RowBox[{"x1", ",", "y1"}], "}"}], ",", 
+           RowBox[{"{", 
+            RowBox[{"x2", ",", "y2"}], "}"}], ",", 
+           RowBox[{"{", 
+            RowBox[{"x3", ",", "y3"}], "}"}]}], "}"}]}], ";", 
+        "\[IndentingNewLine]", 
+        RowBox[{"R", "=", 
+         RowBox[{"RotationMatrix", "[", "\[Theta]", "]"}]}], ";", 
+        "\[IndentingNewLine]", 
+        RowBox[{"transformed", "=", 
+         RowBox[{
+          RowBox[{
+           RowBox[{
+            RowBox[{"scale", " ", 
+             RowBox[{"(", 
+              RowBox[{"R", ".", "#"}], ")"}]}], "+", 
+            RowBox[{"{", 
+             RowBox[{"tx", ",", "ty"}], "}"}]}], "&"}], "/@", "pts"}]}], ";", 
+        "\[IndentingNewLine]", 
+        RowBox[{"Graphics", "[", 
+         RowBox[{
+          RowBox[{"{", "\[IndentingNewLine]", 
+           RowBox[{"(*", 
+            RowBox[{"Original", " ", "triangle"}], "*)"}], 
+           RowBox[{
+            RowBox[{"{", 
+             RowBox[{"colorOriginal", ",", "Thick", ",", 
+              RowBox[{"FaceForm", "[", 
+               RowBox[{"Directive", "[", 
+                RowBox[{"colorOriginal", ",", 
+                 RowBox[{"Opacity", "[", ".2", "]"}]}], "]"}], "]"}], ",", 
+              RowBox[{"Polygon", "[", "pts", "]"}]}], "}"}], ",", 
+            "\[IndentingNewLine]", 
+            RowBox[{"(*", 
+             RowBox[{"Original", " ", "edges"}], "*)"}], 
+            RowBox[{"{", 
+             RowBox[{"colorOriginal", ",", "Thick", ",", 
+              RowBox[{"Line", "[", 
+               RowBox[{"Append", "[", 
+                RowBox[{"pts", ",", 
+                 RowBox[{"First", "[", "pts", "]"}]}], "]"}], "]"}]}], "}"}], 
+            ",", "\[IndentingNewLine]", 
+            RowBox[{"(*", 
+             RowBox[{"Original", " ", "vertices"}], "*)"}], 
+            RowBox[{"{", 
+             RowBox[{"colorOriginal", ",", 
+              RowBox[{"PointSize", "[", ".018", "]"}], ",", 
+              RowBox[{"Point", "[", "pts", "]"}]}], "}"}], ",", 
+            "\[IndentingNewLine]", 
+            RowBox[{"(*", 
+             RowBox[{"Transformed", " ", "triangle"}], "*)"}], 
+            RowBox[{"{", 
+             RowBox[{"colorTransformed", ",", "Thick", ",", 
+              RowBox[{"FaceForm", "[", 
+               RowBox[{"Directive", "[", 
+                RowBox[{"colorTransformed", ",", 
+                 RowBox[{"Opacity", "[", ".2", "]"}]}], "]"}], "]"}], ",", 
+              RowBox[{"Polygon", "[", "transformed", "]"}]}], "}"}], ",", 
+            "\[IndentingNewLine]", 
+            RowBox[{"(*", 
+             RowBox[{"Transformed", " ", "edges"}], "*)"}], 
+            RowBox[{"{", 
+             RowBox[{"colorTransformed", ",", "Thick", ",", 
+              RowBox[{"Line", "[", 
+               RowBox[{"Append", "[", 
+                RowBox[{"transformed", ",", 
+                 RowBox[{"First", "[", "transformed", "]"}]}], "]"}], "]"}]}],
+              "}"}], ",", "\[IndentingNewLine]", 
+            RowBox[{"(*", 
+             RowBox[{"Transformed", " ", "vertices"}], "*)"}], 
+            RowBox[{"{", 
+             RowBox[{"colorTransformed", ",", 
+              RowBox[{"PointSize", "[", ".018", "]"}], ",", 
+              RowBox[{"Point", "[", "transformed", "]"}]}], "}"}], ",", 
+            "\[IndentingNewLine]", 
+            RowBox[{"(*", "Labels", "*)"}], 
+            RowBox[{"MapThread", "[", 
+             RowBox[{
+              RowBox[{
+               RowBox[{"Text", "[", 
+                RowBox[{
+                 RowBox[{"Style", "[", 
+                  RowBox[{"#1", ",", "14", ",", "Bold"}], "]"}], ",", 
+                 RowBox[{"#2", "+", 
+                  RowBox[{"{", 
+                   RowBox[{"0.15", ",", "0.15"}], "}"}]}]}], "]"}], "&"}], ",", 
+              RowBox[{"{", 
+               RowBox[{
+                RowBox[{"{", 
+                 RowBox[{"\"\<A\>\"", ",", "\"\<B\>\"", ",", "\"\<C\>\""}], 
+                 "}"}], ",", "pts"}], "}"}]}], "]"}], ",", 
+            RowBox[{"MapThread", "[", 
+             RowBox[{
+              RowBox[{
+               RowBox[{"Text", "[", 
+                RowBox[{
+                 RowBox[{"Style", "[", 
+                  RowBox[{"#1", ",", "14", ",", "Bold"}], "]"}], ",", 
+                 RowBox[{"#2", "+", 
+                  RowBox[{"{", 
+                   RowBox[{"0.15", ",", 
+                    RowBox[{"-", "0.15"}]}], "}"}]}]}], "]"}], "&"}], ",", 
+              RowBox[{"{", 
+               RowBox[{
+                RowBox[{"{", 
+                 RowBox[{"\"\<A'\>\"", ",", "\"\<B'\>\"", ",", "\"\<C'\>\""}],
+                  "}"}], ",", "transformed"}], "}"}]}], "]"}]}], 
+           "\[IndentingNewLine]", "}"}], ",", 
+          RowBox[{"Axes", "->", "True"}], ",", 
+          RowBox[{"AspectRatio", "->", "1"}], ",", 
+          RowBox[{"PlotRange", "->", 
+           RowBox[{"{", 
+            RowBox[{
+             RowBox[{"{", 
+              RowBox[{
+               RowBox[{"-", "10"}], ",", "10"}], "}"}], ",", 
+             RowBox[{"{", 
+              RowBox[{
+               RowBox[{"-", "10"}], ",", "10"}], "}"}]}], "}"}]}], ",", 
+          RowBox[{"ImageSize", "->", "600"}], ",", 
+          RowBox[{"GridLines", "->", "Automatic"}]}], "\[IndentingNewLine]", 
+         "]"}]}]}], "]"}], ",", "\[IndentingNewLine]", 
+     RowBox[{"(*", 
+      RowBox[{"Triangle", " ", "vertices"}], "*)"}], 
+     RowBox[{"{", 
+      RowBox[{
+       RowBox[{"{", 
+        RowBox[{"x1", ",", "0", ",", "\"\<A\:2093\>\""}], "}"}], ",", 
+       RowBox[{"-", "5"}], ",", "5", ",", 
+       RowBox[{"Appearance", "->", "\"\<Labeled\>\""}]}], "}"}], ",", 
+     RowBox[{"{", 
+      RowBox[{
+       RowBox[{"{", 
+        RowBox[{"y1", ",", "0", ",", "\"\<A\:1d67\>\""}], "}"}], ",", 
+       RowBox[{"-", "5"}], ",", "5", ",", 
+       RowBox[{"Appearance", "->", "\"\<Labeled\>\""}]}], "}"}], ",", 
+     "Delimiter", ",", "\[IndentingNewLine]", 
+     RowBox[{"{", 
+      RowBox[{
+       RowBox[{"{", 
+        RowBox[{"x2", ",", "3", ",", "\"\<B\:2093\>\""}], "}"}], ",", 
+       RowBox[{"-", "5"}], ",", "5", ",", 
+       RowBox[{"Appearance", "->", "\"\<Labeled\>\""}]}], "}"}], ",", 
+     RowBox[{"{", 
+      RowBox[{
+       RowBox[{"{", 
+        RowBox[{"y2", ",", "1", ",", "\"\<B\:1d67\>\""}], "}"}], ",", 
+       RowBox[{"-", "5"}], ",", "5", ",", 
+       RowBox[{"Appearance", "->", "\"\<Labeled\>\""}]}], "}"}], ",", 
+     "Delimiter", ",", "\[IndentingNewLine]", 
+     RowBox[{"{", 
+      RowBox[{
+       RowBox[{"{", 
+        RowBox[{"x3", ",", "1", ",", "\"\<C\:2093\>\""}], "}"}], ",", 
+       RowBox[{"-", "5"}], ",", "5", ",", 
+       RowBox[{"Appearance", "->", "\"\<Labeled\>\""}]}], "}"}], ",", 
+     RowBox[{"{", 
+      RowBox[{
+       RowBox[{"{", 
+        RowBox[{"y3", ",", "4", ",", "\"\<C\:1d67\>\""}], "}"}], ",", 
+       RowBox[{"-", "5"}], ",", "5", ",", 
+       RowBox[{"Appearance", "->", "\"\<Labeled\>\""}]}], "}"}], ",", 
+     "Delimiter", ",", "\[IndentingNewLine]", 
+     RowBox[{"(*", 
+      RowBox[{"Similarity", " ", "transformation"}], "*)"}], 
+     RowBox[{"{", 
+      RowBox[{
+       RowBox[{"{", 
+        RowBox[{"tx", ",", 
+         RowBox[{"RandomReal", "[", 
+          RowBox[{"{", 
+           RowBox[{
+            RowBox[{"-", "1"}], ",", "1"}], "}"}], "]"}], ",", "\"\<x\>\""}], 
+        "}"}], ",", 
+       RowBox[{"-", "5"}], ",", "5", ",", 
+       RowBox[{"Appearance", "->", "\"\<Labeled\>\""}]}], "}"}], ",", 
+     "\[IndentingNewLine]", 
+     RowBox[{"{", 
+      RowBox[{
+       RowBox[{"{", 
+        RowBox[{"ty", ",", 
+         RowBox[{"RandomReal", "[", 
+          RowBox[{"{", 
+           RowBox[{
+            RowBox[{"-", "1"}], ",", "1"}], "}"}], "]"}], ",", "\"\<y\>\""}], 
+        "}"}], ",", 
+       RowBox[{"-", "5"}], ",", "5", ",", 
+       RowBox[{"Appearance", "->", "\"\<Labeled\>\""}]}], "}"}], ",", 
+     "\[IndentingNewLine]", 
+     RowBox[{"{", 
+      RowBox[{
+       RowBox[{"{", 
+        RowBox[{"\[Theta]", ",", 
+         RowBox[{"RandomReal", "[", 
+          RowBox[{"{", 
+           RowBox[{
+            RowBox[{"-", "1"}], ",", "1"}], "}"}], "]"}], 
+         ",", "\"\<\[Theta]\>\""}], "}"}], ",", 
+       RowBox[{"-", "Pi"}], ",", "Pi", ",", 
+       RowBox[{"Appearance", "->", "\"\<Labeled\>\""}]}], "}"}], ",", 
+     "\[IndentingNewLine]", 
+     RowBox[{"{", 
+      RowBox[{
+       RowBox[{"{", 
+        RowBox[{"scale", ",", 
+         RowBox[{"Exp", "[", 
+          RowBox[{"RandomReal", "[", 
+           RowBox[{"{", 
+            RowBox[{
+             RowBox[{"-", "0.2"}], ",", "0.2"}], "}"}], "]"}], "]"}], 
+         ",", "\"\<a\>\""}], "}"}], ",", "0.1", ",", "3", ",", 
+       RowBox[{"Appearance", "->", "\"\<Labeled\>\""}]}], "}"}], ",", 
+     "\[IndentingNewLine]", 
+     RowBox[{"ControlPlacement", "->", "Left"}]}], "\[IndentingNewLine]", 
+    "]"}]}], "\[IndentingNewLine]"}], "\[IndentingNewLine]", 
+ RowBox[{
+  RowBox[{
+   RowBox[{"Plot\[Gamma]Tilde", "[", "c4_", "]"}], ":=", 
+   RowBox[{"ParametricPlot", "[", 
+    RowBox[{
+     RowBox[{"\[Gamma]Tilde", "[", 
+      RowBox[{"c4", ",", "t"}], "]"}], ",", 
+     RowBox[{"{", 
+      RowBox[{"t", ",", "0", ",", 
+       RowBox[{"5", " ", "2", "\[Pi]"}]}], "}"}], ",", 
+     RowBox[{"ImageSize", "->", "Large"}]}], "]"}]}], 
+  "\[IndentingNewLine]"}], "\[IndentingNewLine]", 
+ RowBox[{
+  RowBox[{"(*", 
+   RowBox[{
+    RowBox[{"Plot\[Gamma]TildeThick", "[", 
+     RowBox[{"c4_", ",", 
+      RowBox[{"samples_", ":", "250"}]}], "]"}], ":=", 
+    RowBox[{"Module", "[", 
+     RowBox[{
+      RowBox[{"{", 
+       RowBox[{"ts", ",", "ps", ",", "points", ",", "scales", ",", "jump"}], 
+       "}"}], ",", "\[IndentingNewLine]", 
+      RowBox[{
+       RowBox[{"ts", "=", 
+        RowBox[{"Range", "[", 
+         RowBox[{"0", ",", 
+          RowBox[{"5", " ", "2", "\[Pi]"}], ",", 
+          FractionBox[
+           RowBox[{"5", " ", "2", "\[Pi]"}], 
+           RowBox[{"samples", "-", "1"}]]}], "]"}]}], ";", 
+       "\[IndentingNewLine]", 
+       RowBox[{"points", "=", 
+        RowBox[{"Map", "[", 
+         RowBox[{
+          RowBox[{
+           RowBox[{"N", "[", 
+            RowBox[{"\[Gamma]Tilde", "[", 
+             RowBox[{"c4", ",", "#"}], "]"}], "]"}], "&"}], ",", "ts"}], 
+         "]"}]}], ";", "\[IndentingNewLine]", 
+       RowBox[{"scales", "=", 
+        RowBox[{"Map", "[", 
+         RowBox[{
+          RowBox[{
+           RowBox[{"N", "[", 
+            RowBox[{"Exp", "[", 
+             RowBox[{"#", " ", "c4"}], "]"}], "]"}], "&"}], ",", "ts"}], 
+         "]"}]}], ";", "\[IndentingNewLine]", 
+       RowBox[{"Return", "[", 
+        RowBox[{"Graphics3D", "[", 
+         RowBox[{
+          RowBox[{"{", "\[IndentingNewLine]", 
+           RowBox[{
+            RowBox[{"CapForm", "[", "\"\<Square\>\"", "]"}], ",", 
+            "\[IndentingNewLine]", 
+            RowBox[{"Tube", "[", 
+             RowBox[{"points", ",", 
+              RowBox[{"0.05", "+", 
+               RowBox[{"0.1", 
+                RowBox[{"Rescale", "[", "scales", "]"}]}]}]}], "]"}]}], 
+           "\[IndentingNewLine]", "}"}], ",", 
+          RowBox[{"ImageSize", "->", "Large"}], ",", 
+          RowBox[{"ViewPoint", "->", "Bottom"}], ",", 
+          RowBox[{"ViewProjection", "->", "\"\<Orthographic\>\""}]}], "]"}], 
+        "]"}]}]}], "\[IndentingNewLine]", "]"}]}], "*)"}]}]}], "Input",
+ PrivateCellOptions->{"CellSettings"-><|"ElisionEffect" -> "PaperTear"|>},
+ CellSize->{Automatic, 27.25},
+ CellLabel->"In[1]:=",ExpressionUUID->"eb2537e0-daa3-40ca-90f6-8e1663564842"],
+
+Cell[TextData[{
+ Cell[BoxData[
+  FormBox[
+   RowBox[{"SIM", "(", "2", ")"}], TraditionalForm]],
+  FormatType->TraditionalForm,ExpressionUUID->
+  "dd1f7b75-3759-4586-ad96-de7ce6dddeaf"],
+ " is the similarity group/similitude group/affine conformal special \
+orthogonal group on ",
+ Cell[BoxData[
+  FormBox[
+   SuperscriptBox["\[DoubleStruckCapitalR]", "2"], TraditionalForm]],
+  FormatType->TraditionalForm,ExpressionUUID->
+  "a0cb9d63-f2c9-41e0-8a9b-0830076ba154"],
+ ", consisting of transformations which preserve similarity and orientation:\n\
+if you apply a transformation in ",
+ Cell[BoxData[
+  FormBox[
+   RowBox[{"SIM", "(", "2", ")"}], TraditionalForm]],
+  FormatType->TraditionalForm,ExpressionUUID->
+  "01d39ad4-6ae1-4042-aa4a-c9c5afe02324"],
+ " to a triangle, you get a similar triangle (equal angles) in the same \
+orientation.\n",
+ Cell[BoxData[
+  FormBox[
+   RowBox[{"SIM", "(", "2", ")"}], TraditionalForm]],
+  FormatType->TraditionalForm,ExpressionUUID->
+  "ff090fc6-2f33-46b4-b8dc-a4fb5b673a7e"],
+ " is a Lie group. In essence this means it encodes a continuous symmetry; \
+formally it means that it is a smooth manifold and a group, and the group \
+operations are smooth.\nIt is not hard to see that  ",
+ Cell[BoxData[
+  FormBox[
+   RowBox[{
+    RowBox[{"SIM", "(", "2", ")"}], " ", "\[TildeFullEqual]", " ", 
+    RowBox[{
+     SuperscriptBox["\[DoubleStruckCapitalR]", "2"], " ", "\:22ca", " ", 
+     RowBox[{"(", 
+      RowBox[{
+       RowBox[{"SO", "(", "2", ")"}], " ", "\[Times]", " ", 
+       SubscriptBox["\[DoubleStruckCapitalR]", 
+        RowBox[{">", "0"}]]}], ")"}]}]}], TraditionalForm]],
+  FormatType->TraditionalForm,ExpressionUUID->
+  "b90f348f-5489-4b1b-8d6c-a5b69a272b85"],
+ ": orientation-preserving similarity transformations are precisely \
+translations, rotations, and isotropic scalings.\nBecause of this, we may \
+denote elements in ",
+ Cell[BoxData[
+  FormBox[
+   RowBox[{"SIM", "(", "2", ")"}], TraditionalForm]],
+  FormatType->TraditionalForm,ExpressionUUID->
+  "74de4189-3b17-4987-a837-d3251fb4b3d0"],
+ " by a tuple of a translation, rotation, and scaling ",
+ Cell[BoxData[
+  FormBox[
+   RowBox[{
+    RowBox[{"(", 
+     RowBox[{
+      StyleBox["x",
+       FontWeight->"Bold"], ",", "R", ",", "a"}], ")"}], "\[Element]", 
+    RowBox[{
+     SuperscriptBox["\[DoubleStruckCapitalR]", "2"], "\[Times]", 
+     RowBox[{"SO", "(", "2", ")"}], "\[Times]", 
+     SubscriptBox["\[DoubleStruckCapitalR]", 
+      RowBox[{">", "0"}]]}]}], TraditionalForm]],
+  FormatType->TraditionalForm,ExpressionUUID->
+  "778f3d65-a646-456a-b06a-badc450a4c6d"],
+ ".\nThe group product is however not a direct product of the group products \
+on ",
+ Cell[BoxData[
+  FormBox[
+   RowBox[{
+    SuperscriptBox["\[DoubleStruckCapitalR]", "2"], ",", 
+    RowBox[{"SO", "(", "2", ")"}], ",", 
+    SubscriptBox["\[DoubleStruckCapitalR]", 
+     RowBox[{">", "0"}]]}], TraditionalForm]],
+  FormatType->TraditionalForm,ExpressionUUID->
+  "91ce7d48-7928-4e02-998f-189d231a6a68"],
+ " (this is the meaning ",
+ Cell[BoxData[
+  FormBox["\:22ca", TraditionalForm]],
+  FormatType->TraditionalForm,ExpressionUUID->
+  "604c64a2-67ed-43df-9d0f-bcea8e6f73d7"],
+ "), instead:\n",
+ Cell[BoxData[
+  FormBox[
+   RowBox[{
+    RowBox[{
+     RowBox[{"(", 
+      RowBox[{
+       SubscriptBox[
+        StyleBox["x",
+         FontWeight->"Bold"], "1"], ",", 
+       SubscriptBox["R", "1"], ",", 
+       SubscriptBox["a", "1"]}], ")"}], 
+     RowBox[{"(", 
+      RowBox[{
+       SubscriptBox[
+        StyleBox["x",
+         FontWeight->"Bold"], "2"], ",", 
+       SubscriptBox["R", "2"], ",", 
+       SubscriptBox["a", "2"]}], ")"}]}], "=", 
+    RowBox[{"(", 
+     RowBox[{
+      RowBox[{
+       SubscriptBox[
+        StyleBox["x",
+         FontWeight->"Bold"], "1"], "+", 
+       RowBox[{
+        SubscriptBox["a", "1"], 
+        SubscriptBox["R", "1"], 
+        SubscriptBox[
+         StyleBox["x",
+          FontWeight->"Bold"], "2"]}]}], ",", 
+      RowBox[{
+       SubscriptBox["R", "1"], 
+       SubscriptBox["R", "2"]}], ",", 
+      RowBox[{
+       SubscriptBox["a", "1"], 
+       SubscriptBox["a", "2"]}]}], ")"}]}], TraditionalForm]],
+  FormatType->TraditionalForm,ExpressionUUID->
+  "49a158fc-c183-4d36-8b0b-e27412b76185"],
+ ".\nEquivalently, we can work with the following matrix representation of ",
+ Cell[BoxData[
+  FormBox[
+   RowBox[{"SIM", "(", "2", ")"}], TraditionalForm]],
+  FormatType->TraditionalForm,ExpressionUUID->
+  "d711fbfd-3078-4e25-b7a6-855692fa8d07"],
+ ":\n",
+ Cell[BoxData[
+  FormBox[
+   RowBox[{
+    RowBox[{"(", 
+     RowBox[{
+      StyleBox["x",
+       FontWeight->"Bold"], ",", "R", ",", "a"}], ")"}], "\[LeftRightArrow]", 
+    
+    RowBox[{"(", 
+     TagBox[GridBox[{
+        {
+         RowBox[{"a", " ", "R"}], 
+         StyleBox["x",
+          FontWeight->"Bold"]},
+        {"0", "1"}
+       }],
+      "Grid"], ")"}]}], TraditionalForm]],
+  FormatType->TraditionalForm,ExpressionUUID->
+  "d616939a-d1d4-41cf-91c7-f469d315058d"],
+ ".\nOne can confirm that the matrix product behaves like the ",
+ Cell[BoxData[
+  FormBox[
+   RowBox[{"SIM", "(", "2", ")"}], TraditionalForm]],
+  FormatType->TraditionalForm,ExpressionUUID->
+  "9e748072-a229-4523-a3e1-23bc7cd7068d"],
+ " group product for these matrices.\nIt is natural to let ",
+ Cell[BoxData[
+  FormBox[
+   RowBox[{"SIM", "(", "2", ")"}], TraditionalForm]],
+  FormatType->TraditionalForm,ExpressionUUID->
+  "30156d0b-9e64-4cf4-940b-d381c9dbb6b6"],
+ " act on ",
+ Cell[BoxData[
+  FormBox[
+   SuperscriptBox["\[DoubleStruckCapitalR]", "2"], TraditionalForm]],
+  FormatType->TraditionalForm,ExpressionUUID->
+  "5441ca2c-2499-48cb-8f24-a8185074b908"],
+ ": the obvious action is ",
+ Cell[BoxData[
+  FormBox[
+   RowBox[{
+    RowBox[{
+     RowBox[{"(", 
+      RowBox[{
+       StyleBox["x",
+        FontWeight->"Bold"], ",", "R", ",", "a"}], ")"}], 
+     StyleBox["y",
+      FontWeight->"Bold"]}], "=", 
+    RowBox[{
+     StyleBox["x",
+      FontWeight->"Bold"], "+", 
+     RowBox[{"a", " ", "R", " ", 
+      StyleBox["y",
+       FontWeight->"Bold"]}]}]}], TraditionalForm]],
+  FormatType->TraditionalForm,ExpressionUUID->
+  "67dda463-3d23-45b0-b1e3-e3225d81c502"],
+ ", equivalently written with homogeneous coordinates as ",
+ Cell[BoxData[
+  FormBox[
+   RowBox[{
+    RowBox[{
+     RowBox[{"(", 
+      TagBox[GridBox[{
+         {
+          RowBox[{"a", " ", "R"}], 
+          StyleBox["x",
+           FontWeight->"Bold"]},
+         {"0", "1"}
+        }],
+       "Grid"], ")"}], 
+     RowBox[{"(", 
+      TagBox[GridBox[{
+         {
+          StyleBox["y",
+           FontWeight->"Bold"]},
+         {"1"}
+        }],
+       "Grid"], ")"}]}], "=", 
+    RowBox[{"(", 
+     TagBox[GridBox[{
+        {
+         RowBox[{
+          StyleBox["x",
+           FontWeight->"Bold"], "+", 
+          RowBox[{"a", " ", "R", " ", 
+           StyleBox["y",
+            FontWeight->"Bold"]}]}]},
+        {"1"}
+       }],
+      "Grid"], ")"}]}], TraditionalForm]],
+  FormatType->TraditionalForm,ExpressionUUID->
+  "1129c95c-ce34-4042-8be8-c49bd52d5343"],
+ ".\nFinally, since ",
+ Cell[BoxData[
+  FormBox[
+   RowBox[{
+    RowBox[{"SO", "(", "2", ")"}], "\[TildeFullEqual]", 
+    SuperscriptBox["S", "1"]}], TraditionalForm]],
+  FormatType->TraditionalForm,ExpressionUUID->
+  "23c24f15-992e-4a0a-a15b-67e8ad423fb2"],
+ " (as smooth manifolds), we can replace a rotation ",
+ Cell[BoxData[
+  FormBox["R", TraditionalForm]],
+  FormatType->TraditionalForm,ExpressionUUID->
+  "005e8c80-1b2f-4c22-adb7-f8d2dcd6781e"],
+ " by its angle ",
+ Cell[BoxData[
+  FormBox["\[Theta]", TraditionalForm]],
+  FormatType->TraditionalForm,ExpressionUUID->
+  "b2846440-0071-42a6-b07d-89247ad19eb2"],
+ "."
+}], "Text",ExpressionUUID->"29696d91-b4fe-4833-a315-84d0eac9e15c"],
+
+Cell[BoxData[
+ RowBox[{"SIM2Visualisation", "[", "]"}]], "Input",
+ CellLabel->"In[3]:=",ExpressionUUID->"113a02cd-3919-484c-8ba5-952d8420f952"],
+
+Cell[CellGroupData[{
+
+Cell["Exponential Curves", "Section",ExpressionUUID->"e6ae342b-83f4-46a7-9aea-847bef164a6f"],
+
+Cell[TextData[{
+ "We have previously already heard about exponential curves. Here I will \
+briefly describe what exponential curves are in general, and why ",
+ Cell[BoxData[
+  FormBox[
+   RowBox[{"SIM", "(", "2", ")"}], TraditionalForm]],
+  FormatType->TraditionalForm,ExpressionUUID->
+  "f550aecd-b965-4a8d-a250-cf06cef6c69f"],
+ " exponential curves could be interesting for the modelling of shells.\n\
+Exponential curves are 1-parameter subgroups of a Lie group. This means that ",
+ Cell[BoxData[
+  FormBox[
+   RowBox[{
+    RowBox[{"\[Gamma]", ":", "\[DoubleStruckCapitalR]"}], "->", 
+    RowBox[{"SIM", "(", "2", ")"}]}], TraditionalForm]],
+  FormatType->TraditionalForm,ExpressionUUID->
+  "7e3bf568-fd16-4291-bf78-9d53b80dafa5"],
+ " is an exponential curve if ",
+ Cell[BoxData[
+  FormBox[
+   RowBox[{
+    RowBox[{"\[Gamma]", "(", 
+     RowBox[{"s", "+", "t"}], ")"}], "=", 
+    RowBox[{
+     RowBox[{"\[Gamma]", "(", "s", ")"}], 
+     RowBox[{"\[Gamma]", "(", "t", ")"}]}]}], TraditionalForm]],
+  FormatType->TraditionalForm,ExpressionUUID->
+  "179b155b-1b3a-4fac-90c6-ff4f2c99a8bf"],
+ " for all ",
+ Cell[BoxData[
+  FormBox[
+   RowBox[{"s", ",", 
+    RowBox[{"t", "\[Element]", "\[DoubleStruckCapitalR]"}]}], 
+   TraditionalForm]],
+  FormatType->TraditionalForm,ExpressionUUID->
+  "c92c276e-2434-448c-aeed-0bdbab9d1660"],
+ ".\nExponential curves can be thought of as the natural Lie group \
+generalisation of straight lines in Euclidean space."
+}], "Text",ExpressionUUID->"c6f23a6d-487e-47cf-9f0a-2f8e4a31a6df"],
+
+Cell["\<\
+There are many ways to compute exponential curves (exponential curves are the \
+integral curves of left- (and right-) invariant vector fields, and so can be \
+found by integration of ODEs; for matrix groups, we can make use of the \
+matrix exponential, etc.).
+Here we have already derived an expression for exponential curves in terms of \
+logarithmic coordinates:\
+\>", "Text",ExpressionUUID->"7e48369f-7f5d-418e-83d1-e2b2f66951eb"],
+
+Cell[BoxData[{
+ RowBox[{
+  RowBox[{"x", "[", 
+   RowBox[{"c1_", ",", "c2_", ",", "c3_", ",", "c4_"}], "]"}], ":=", 
+  FractionBox[
+   RowBox[{
+    RowBox[{"c1", " ", "c3"}], "-", 
+    RowBox[{"c2", " ", "c4"}], "+", 
+    RowBox[{
+     SuperscriptBox["\[ExponentialE]", "c4"], " ", 
+     RowBox[{"(", 
+      RowBox[{
+       RowBox[{
+        RowBox[{"(", 
+         RowBox[{
+          RowBox[{
+           RowBox[{"-", "c1"}], " ", "c3"}], "+", 
+          RowBox[{"c2", " ", "c4"}]}], ")"}], " ", 
+        RowBox[{"Cos", "[", "c3", "]"}]}], "+", 
+       RowBox[{
+        RowBox[{"(", 
+         RowBox[{
+          RowBox[{"c2", " ", "c3"}], "+", 
+          RowBox[{"c1", " ", "c4"}]}], ")"}], " ", 
+        RowBox[{"Sin", "[", "c3", "]"}]}]}], ")"}]}]}], 
+   RowBox[{
+    SuperscriptBox["c3", "2"], "+", 
+    SuperscriptBox["c4", "2"]}]]}], "\[IndentingNewLine]", 
+ RowBox[{
+  RowBox[{"y", "[", 
+   RowBox[{"c1_", ",", "c2_", ",", "c3_", ",", "c4_"}], "]"}], ":=", 
+  FractionBox[
+   RowBox[{
+    RowBox[{
+     RowBox[{"-", "c2"}], " ", "c3"}], "-", 
+    RowBox[{"c1", " ", "c4"}], "+", 
+    RowBox[{
+     SuperscriptBox["\[ExponentialE]", "c4"], " ", 
+     RowBox[{"(", 
+      RowBox[{
+       RowBox[{
+        RowBox[{"(", 
+         RowBox[{
+          RowBox[{"c2", " ", "c3"}], "+", 
+          RowBox[{"c1", " ", "c4"}]}], ")"}], " ", 
+        RowBox[{"Cos", "[", "c3", "]"}]}], "+", 
+       RowBox[{
+        RowBox[{"(", 
+         RowBox[{
+          RowBox[{"c1", " ", "c3"}], "-", 
+          RowBox[{"c2", " ", "c4"}]}], ")"}], " ", 
+        RowBox[{"Sin", "[", "c3", "]"}]}]}], ")"}]}]}], 
+   RowBox[{
+    SuperscriptBox["c3", "2"], "+", 
+    SuperscriptBox["c4", "2"]}]]}], "\[IndentingNewLine]", 
+ RowBox[{
+  RowBox[{"\[Theta]", "[", 
+   RowBox[{"c1_", ",", "c2_", ",", "c3_", ",", "c4_"}], "]"}], ":=", "c3"}], "\[IndentingNewLine]", 
+ RowBox[{
+  RowBox[{"a", "[", 
+   RowBox[{"c1_", ",", "c2_", ",", "c3_", ",", "c4_"}], "]"}], ":=", 
+  SuperscriptBox["\[ExponentialE]", "c4"]}]}], "Input",
+ CellLabel->"In[4]:=",ExpressionUUID->"667c58d2-057c-4b2f-bbab-54190ae91ce8"],
+
+Cell[TextData[{
+ "To get a better understanding of logarithmic coordinates, note that ",
+ Cell[BoxData[
+  FormBox[
+   RowBox[{
+    RowBox[{
+     RowBox[{"x", "(", 
+      RowBox[{"t", ",", "0", ",", "0", ",", "0"}], ")"}], "=", "t"}], ",", 
+    RowBox[{
+     RowBox[{"y", "(", 
+      RowBox[{"0", ",", "t", ",", "0", ",", "0"}], ")"}], "=", "t"}], ",", 
+    RowBox[{
+     RowBox[{"\[Theta]", "(", 
+      RowBox[{"0", ",", "0", ",", "t", ",", "0"}], ")"}], "=", "t"}], ",", 
+    RowBox[{
+     RowBox[{"a", "(", 
+      RowBox[{"0", ",", "0", ",", "0", ",", "t"}], ")"}], "=", 
+     SuperscriptBox["e", "t"]}]}], TraditionalForm]],
+  FormatType->TraditionalForm,ExpressionUUID->
+  "48a367b9-ba6d-458d-a86d-942e147b11e5"],
+ ".\nAn exponential curve ",
+ Cell[BoxData[
+  FormBox["\[Gamma]", TraditionalForm]],
+  FormatType->TraditionalForm,ExpressionUUID->
+  "996f28e4-eccf-42b4-94ee-43f4798839aa"],
+ " with parameters ",
+ Cell[BoxData[
+  FormBox[
+   RowBox[{
+    SuperscriptBox["c", "1"], ",", 
+    SuperscriptBox["c", "2"], ",", 
+    SuperscriptBox["c", "3"], ",", 
+    SuperscriptBox["c", "4"]}], TraditionalForm]],
+  FormatType->TraditionalForm,ExpressionUUID->
+  "790e27da-b776-4d30-8688-b9eb4ca7df6e"],
+ " is then given by\n",
+ Cell[BoxData[
+  FormBox[
+   RowBox[{
+    RowBox[{"\[Gamma]", "(", "t", ")"}], ":=", 
+    RowBox[{"(", 
+     RowBox[{
+      RowBox[{"x", "(", 
+       RowBox[{
+        RowBox[{"t", " ", 
+         SuperscriptBox["c", "1"]}], ",", 
+        RowBox[{"t", " ", 
+         SuperscriptBox["c", "2"]}], ",", 
+        RowBox[{"t", " ", 
+         SuperscriptBox["c", "3"]}], ",", 
+        RowBox[{"t", " ", 
+         SuperscriptBox["c", "4"]}]}], ")"}], ",", 
+      RowBox[{"y", "(", 
+       RowBox[{
+        RowBox[{"t", " ", 
+         SuperscriptBox["c", "1"]}], ",", 
+        RowBox[{"t", " ", 
+         SuperscriptBox["c", "2"]}], ",", 
+        RowBox[{"t", " ", 
+         SuperscriptBox["c", "3"]}], ",", 
+        RowBox[{"t", " ", 
+         SuperscriptBox["c", "4"]}]}], ")"}], ",", 
+      RowBox[{"\[Theta]", "(", 
+       RowBox[{
+        RowBox[{"t", " ", 
+         SuperscriptBox["c", "1"]}], ",", 
+        RowBox[{"t", " ", 
+         SuperscriptBox["c", "2"]}], ",", 
+        RowBox[{"t", " ", 
+         SuperscriptBox["c", "3"]}], ",", 
+        RowBox[{"t", " ", 
+         SuperscriptBox["c", "4"]}]}], ")"}], ",", 
+      RowBox[{"a", "(", 
+       RowBox[{
+        RowBox[{"t", " ", 
+         SuperscriptBox["c", "1"]}], ",", 
+        RowBox[{"t", " ", 
+         SuperscriptBox["c", "2"]}], ",", 
+        RowBox[{"t", " ", 
+         SuperscriptBox["c", "3"]}], ",", 
+        RowBox[{"t", " ", 
+         SuperscriptBox["c", "4"]}]}], ")"}]}], ")"}]}], TraditionalForm]],
+  FormatType->TraditionalForm,ExpressionUUID->
+  "778aab9a-637d-4600-9ddd-1394572c48a9"],
+ "."
+}], "Text",ExpressionUUID->"811047bb-00dd-4651-8026-f140474d07d7"],
+
+Cell[CellGroupData[{
+
+Cell[TextData[{
+ "Spatial projections of ",
+ Cell[BoxData[
+  FormBox[
+   RowBox[{"SIM", "(", "2", ")"}], TraditionalForm]],
+  FormatType->TraditionalForm,ExpressionUUID->
+  "dd6ef1b6-8a7e-49fd-8e56-40769f450ef6"],
+ " exponential curves"
+}], "Subsection",ExpressionUUID->"17704818-51c4-4cd2-be32-9410de0d8b4c"],
+
+Cell[TextData[{
+ "We now project an exponential curve \[Gamma] spatially, i.e. we consider \
+the curve\n",
+ Cell[BoxData[
+  FormBox[
+   RowBox[{
+    RowBox[{
+     OverscriptBox["\[Gamma]", "\[Tilde]"], "(", "t", ")"}], "=", 
+    RowBox[{"(", 
+     RowBox[{
+      RowBox[{"x", "(", 
+       RowBox[{
+        RowBox[{"t", " ", 
+         SuperscriptBox["c", "1"]}], ",", 
+        RowBox[{"t", " ", 
+         SuperscriptBox["c", "2"]}], ",", 
+        RowBox[{"t", " ", 
+         SuperscriptBox["c", "3"]}], ",", 
+        RowBox[{"t", " ", 
+         SuperscriptBox["c", "4"]}]}], ")"}], ",", 
+      RowBox[{"y", "(", 
+       RowBox[{
+        RowBox[{"t", " ", 
+         SuperscriptBox["c", "1"]}], ",", 
+        RowBox[{"t", " ", 
+         SuperscriptBox["c", "2"]}], ",", 
+        RowBox[{"t", " ", 
+         SuperscriptBox["c", "3"]}], ",", 
+        RowBox[{"t", " ", 
+         SuperscriptBox["c", "4"]}]}], ")"}]}], ")"}]}], TraditionalForm]],
+  FormatType->TraditionalForm,ExpressionUUID->
+  "8cccbbbd-89ae-408a-9973-47700e5c9ee2"],
+ ".\nAn interesting fact about the spatial projection of ",
+ Cell[BoxData[
+  FormBox[
+   RowBox[{"SIM", "(", "2", ")"}], TraditionalForm]],
+  FormatType->TraditionalForm,ExpressionUUID->
+  "3b0be30a-9771-4cb6-8199-0a9a4624a0fd"],
+ " exponential curves is that they form logarithmic spirals.\nThe \
+self-similar nature of such spirals allows us to effectively reduce the \
+number of parameters down to 1: we set ",
+ Cell[BoxData[
+  FormBox[
+   RowBox[{
+    RowBox[{
+     SuperscriptBox["c", "1"], "=", "1"}], ",", 
+    RowBox[{
+     SuperscriptBox["c", "2"], "=", "0"}], ",", 
+    RowBox[{
+     SuperscriptBox["c", "3"], "=", "1"}]}], TraditionalForm]],
+  FormatType->TraditionalForm,ExpressionUUID->
+  "cbce44de-892e-4e5a-8cb4-44f8c9cab587"],
+ " and only vary ",
+ Cell[BoxData[
+  FormBox[
+   SuperscriptBox["c", "4"], TraditionalForm]],
+  FormatType->TraditionalForm,ExpressionUUID->
+  "1a974d15-09ec-4ee3-a89f-a66fb925cf76"],
+ "."
+}], "Text",ExpressionUUID->"93381d08-302e-4a8b-9673-71e79cb59530"],
+
+Cell[BoxData[{
+ RowBox[{
+  RowBox[{"x", "[", 
+   RowBox[{
+    RowBox[{"1", "t"}], ",", 
+    RowBox[{"0", "t"}], ",", 
+    RowBox[{"1", "t"}], ",", 
+    RowBox[{"c4", " ", "t"}]}], "]"}], "//", "FullSimplify"}], "\[IndentingNewLine]", 
+ RowBox[{
+  RowBox[{"y", "[", 
+   RowBox[{
+    RowBox[{"1", " ", "t"}], ",", 
+    RowBox[{"0", "t"}], ",", 
+    RowBox[{"1", "t"}], ",", 
+    RowBox[{"c4", " ", "t"}]}], "]"}], "//", "FullSimplify"}]}], "Input",
+ CellLabel->"In[8]:=",ExpressionUUID->"4bffc701-2636-43d5-9b66-3637cf5c99c5"],
+
+Cell[TextData[{
+ "To make the visualisation neater, we also shift the centre of the spiral to \
+the origin. This involves sending ",
+ Cell[BoxData[
+  FormBox[
+   RowBox[{"t", "->", 
+    RowBox[{
+     RowBox[{"-", 
+      RowBox[{"sgn", "(", "c4", ")"}]}], "\[Infinity]"}]}], TraditionalForm]],
+  
+  FormatType->TraditionalForm,ExpressionUUID->
+  "1971f840-6da1-46cf-9009-a17944f5b913"],
+ ". The centred spatial projection of the ",
+ Cell[BoxData[
+  FormBox[
+   RowBox[{"SIM", "(", "2", ")"}], TraditionalForm]],
+  FormatType->TraditionalForm,ExpressionUUID->
+  "07c4ebf6-2684-44c2-8f16-86490394b80d"],
+ " exponential curve is then given by:"
+}], "Text",ExpressionUUID->"f8615265-3633-46fb-bc95-0fe08ba970d3"],
+
+Cell[BoxData[{
+ RowBox[{
+  RowBox[{
+   RowBox[{"\[Gamma]Tilde", "[", 
+    RowBox[{"c4_", ",", "t_"}], "]"}], ":=", 
+   RowBox[{"{", 
+    RowBox[{
+     FractionBox[
+      RowBox[{
+       SuperscriptBox["\[ExponentialE]", 
+        RowBox[{"c4", " ", "t"}]], " ", 
+       RowBox[{"(", 
+        RowBox[{
+         RowBox[{"-", 
+          RowBox[{"Cos", "[", "t", "]"}]}], "+", 
+         RowBox[{"c4", " ", 
+          RowBox[{"Sin", "[", "t", "]"}]}]}], ")"}]}], 
+      RowBox[{"1", "+", 
+       SuperscriptBox["c4", "2"]}]], ",", 
+     FractionBox[
+      RowBox[{
+       SuperscriptBox["\[ExponentialE]", 
+        RowBox[{"c4", " ", "t"}]], " ", 
+       RowBox[{"(", 
+        RowBox[{
+         RowBox[{"c4", " ", 
+          RowBox[{"Cos", "[", "t", "]"}]}], "+", 
+         RowBox[{"Sin", "[", "t", "]"}]}], ")"}]}], 
+      RowBox[{"1", "+", 
+       SuperscriptBox["c4", "2"]}]]}], "}"}]}], 
+  ";"}], "\[IndentingNewLine]", 
+ RowBox[{"Manipulate", "[", 
+  RowBox[{
+   RowBox[{"Plot\[Gamma]Tilde", "[", "c4", "]"}], ",", 
+   RowBox[{"{", 
+    RowBox[{
+     RowBox[{"{", 
+      RowBox[{"c4", ",", 
+       RowBox[{"-", "0.03"}]}], "}"}], ",", 
+     RowBox[{"-", "0.1"}], ",", "0.1", ",", 
+     RowBox[{"Appearance", "->", "\"\<Labeled\>\""}]}], "}"}]}], 
+  "]"}]}], "Input",
+ CellLabel->"In[10]:=",ExpressionUUID->"2226ab68-69ae-4cd0-970a-39ab5a46b6b1"]
+}, Open  ]],
+
+Cell[CellGroupData[{
+
+Cell["Logarithmic spirals", "Subsection",ExpressionUUID->"745461b0-06f5-4cd6-bed7-7c75b80ddf35"],
+
+Cell[TextData[{
+ "We can now find the radius of ",
+ Cell[BoxData[
+  FormBox[
+   OverscriptBox["\[Gamma]", "\[Tilde]"], TraditionalForm]],
+  FormatType->TraditionalForm,ExpressionUUID->
+  "dbcd56b3-8bed-47eb-8d13-9d98ebbcb30e"],
+ " as a function of time."
+}], "Text",ExpressionUUID->"4b8fb2af-7675-4bf5-b343-445f562b3509"],
+
+Cell[BoxData[{
+ RowBox[{
+  RowBox[{"r", "[", 
+   RowBox[{"c4_", ",", "t_"}], "]"}], ":=", 
+  SqrtBox[
+   RowBox[{"Total", "[", 
+    SuperscriptBox[
+     RowBox[{"\[Gamma]Tilde", "[", 
+      RowBox[{"c4", ",", "t"}], "]"}], "2"], 
+    "]"}]]}], "\[IndentingNewLine]", 
+ RowBox[{
+  RowBox[{"r", "[", 
+   RowBox[{"c4", ",", "t"}], "]"}], "//", "FullSimplify"}]}], "Input",
+ CellLabel->"In[12]:=",ExpressionUUID->"7232f3a7-e2fb-48a2-b521-a8749c44cced"],
+
+Cell[TextData[{
+ "We see that ",
+ Cell[BoxData[
+  FormBox[
+   RowBox[{
+    OverscriptBox["\[Gamma]", "\[Tilde]"], " "}], TraditionalForm]],
+  FormatType->TraditionalForm,ExpressionUUID->
+  "4ffbb7aa-498c-41f6-a232-ca22915d4a65"],
+ " is a logarithmic spiral since the ratio of the radius at a given time to \
+the radius at a fixed amount of time later is constant:"
+}], "Text",ExpressionUUID->"e331de16-f959-4cd0-8c15-65639daa21b0"],
+
+Cell[BoxData[{
+ RowBox[{
+  FractionBox[
+   RowBox[{"r", "[", 
+    RowBox[{"c4", ",", "t"}], "]"}], 
+   RowBox[{"r", "[", 
+    RowBox[{"c4", ",", 
+     RowBox[{"t", "+", 
+      RowBox[{"\[Pi]", "/", "2"}]}]}], "]"}]], "//", "FullSimplify"}], "\[IndentingNewLine]", 
+ RowBox[{"Plot", "[", 
+  RowBox[{
+   FractionBox[
+    RowBox[{"r", "[", 
+     RowBox[{
+      RowBox[{"-", "0.03"}], ",", "t"}], "]"}], 
+    RowBox[{"r", "[", 
+     RowBox[{
+      RowBox[{"-", "0.03"}], ",", 
+      RowBox[{"t", "+", 
+       RowBox[{"\[Pi]", "/", "2"}]}]}], "]"}]], ",", 
+   RowBox[{"{", 
+    RowBox[{"t", ",", "0", ",", 
+     RowBox[{"5", " ", "2", "\[Pi]"}]}], "}"}]}], "]"}]}], "Input",
+ CellLabel->"In[14]:=",ExpressionUUID->"bdf5ae43-b239-45b6-8a05-d012f2f62cfe"],
+
+Cell[TextData[{
+ "Logarithmic spirals pop up all over the place, some examples are shown here \
+https://en.wikipedia.org/wiki/Logarithmic_spiral#In_nature.\nA golden spiral \
+is a specific type of logarithmic spiral, such that ",
+ Cell[BoxData[
+  FormBox[
+   RowBox[{
+    RowBox[{
+     RowBox[{"r", "(", 
+      RowBox[{"t", "+", 
+       RowBox[{"\[Pi]", "/", "2"}]}], ")"}], "/", 
+     RowBox[{"r", "(", "t", ")"}]}], "=", "\[Phi]"}], TraditionalForm]],
+  FormatType->TraditionalForm,ExpressionUUID->
+  "bb9b35ae-7706-4ee2-8864-11213e51bd4f"],
+ ", with ",
+ Cell[BoxData[
+  FormBox[
+   RowBox[{"\[Phi]", "=", 
+    FractionBox[
+     RowBox[{"1", "+", 
+      SqrtBox["5"]}], "2"]}], TraditionalForm]],
+  FormatType->TraditionalForm,ExpressionUUID->
+  "f6c2e687-b129-4a4e-9187-a41c9075a074"],
+ " the golden ratio.\nGolden spirals are approximated by (zoomed in) \
+Fibonacci spirals.\nThere is the popular conception that golden spirals are \
+common in nature, but this actually seems not to be the case.\nNevertheless, \
+we can find the value of ",
+ Cell[BoxData[
+  FormBox[
+   SubscriptBox["c", "4"], TraditionalForm]],
+  FormatType->TraditionalForm,ExpressionUUID->
+  "731a9a44-a9f5-4e65-b015-c741062dcee8"],
+ " such that the spatial projection of the ",
+ Cell[BoxData[
+  FormBox[
+   RowBox[{"SIM", "(", "2", ")"}], TraditionalForm]],
+  FormatType->TraditionalForm,ExpressionUUID->
+  "ae45b9ed-ed38-43e0-96a4-20b76a85db31"],
+ " exponential curve is a golden spiral.\nWe found above that ",
+ Cell[BoxData[
+  FormBox[
+   RowBox[{"\[Phi]", "=", 
+    RowBox[{
+     RowBox[{
+      RowBox[{"r", "(", 
+       RowBox[{"t", "+", 
+        RowBox[{"\[Pi]", "/", "2"}]}], ")"}], "/", 
+      RowBox[{"r", "(", "t", ")"}]}], "=", 
+     SuperscriptBox["e", 
+      RowBox[{"-", 
+       FractionBox[
+        RowBox[{
+         SuperscriptBox["c", "4"], "\[Pi]"}], "2"]}]]}]}], TraditionalForm]],
+  FormatType->TraditionalForm,ExpressionUUID->
+  "b5bc06d0-c4ce-45d3-850b-47013f4a06ba"],
+ ", whence\n",
+ Cell[BoxData[
+  FormBox[
+   RowBox[{
+    SuperscriptBox["c", "4"], "=", 
+    RowBox[{
+     RowBox[{"-", 
+      FractionBox[
+       RowBox[{"2", 
+        RowBox[{"log", "(", "\[Phi]", ")"}]}], "\[Pi]"]}], "=", 
+     RowBox[{
+      RowBox[{"-", 
+       FractionBox["2", "\[Pi]"]}], 
+      RowBox[{"log", "(", 
+       FractionBox[
+        RowBox[{"1", "+", 
+         SqrtBox["5"]}], "2"], ")"}]}]}]}], TraditionalForm]],
+  FormatType->TraditionalForm,ExpressionUUID->
+  "5cfe1682-13c3-4d4a-ad82-79d5bb1bcca3"],
+ ".\nThis golden spiral looks like"
+}], "Text",ExpressionUUID->"3fe02eab-d870-405c-aee4-a4d1e3503066"],
+
+Cell[BoxData[
+ RowBox[{"Plot\[Gamma]Tilde", "[", 
+  RowBox[{
+   RowBox[{"-", 
+    FractionBox["2", "\[Pi]"]}], 
+   RowBox[{"Log", "[", 
+    FractionBox[
+     RowBox[{"1", "+", 
+      SqrtBox["5"]}], "2"], "]"}]}], "]"}]], "Input",
+ CellLabel->"In[16]:=",ExpressionUUID->"656d1864-c34c-4225-ba8b-860cc25b3ebb"]
+}, Open  ]],
+
+Cell[CellGroupData[{
+
+Cell["Derivation exponential curve formula", "Subsection",ExpressionUUID->"e7ab942f-146f-4eb0-8d50-ac25db093912"],
+
+Cell[TextData[{
+ "For those who are interested, here is one way to derive the formula for ",
+ Cell[BoxData[
+  FormBox[
+   RowBox[{"SIM", "(", "2", ")"}], TraditionalForm]],
+  FormatType->TraditionalForm,ExpressionUUID->
+  "d112deb6-a907-47f2-ac7d-3b2b3e2d3106"],
+ " using matrix logarithms and exponentials.\nIt should be noted that the \
+logarithmic coordinates (",
+ Cell[BoxData[
+  FormBox[
+   SuperscriptBox["c", "i"], TraditionalForm]],
+  FormatType->TraditionalForm,ExpressionUUID->
+  "3d00cce2-bd8d-42ff-9302-d4f62cdbc53e"],
+ ") are defined with respect to some basis of the Lie algebra ",
+ Cell[BoxData[
+  FormBox[
+   RowBox[{"\[GothicS]\[GothicI]\[GothicM]", "(", "2", ")"}], 
+   TraditionalForm]],
+  FormatType->TraditionalForm,ExpressionUUID->
+  "61d53ffc-886e-46aa-a180-808f9804c106"],
+ " of ",
+ Cell[BoxData[
+  FormBox[
+   RowBox[{"SIM", "(", "2", ")"}], TraditionalForm]],
+  FormatType->TraditionalForm,ExpressionUUID->
+  "a52038f6-a12f-468d-8e7e-f0967d6b6e0e"],
+ ".\nWe define the ",
+ Cell[BoxData[
+  FormBox[
+   SubscriptBox["A", "1"], TraditionalForm]],
+  FormatType->TraditionalForm,ExpressionUUID->
+  "d3994153-3f7c-449b-b32b-42c15888bddd"],
+ " to be the generator of ",
+ Cell[BoxData[
+  FormBox[
+   RowBox[{"t", "|->", 
+    RowBox[{"(", 
+     RowBox[{
+      RowBox[{"(", 
+       RowBox[{"t", ",", "0"}], ")"}], ",", "I", ",", "1"}], ")"}]}], 
+   TraditionalForm]],
+  FormatType->TraditionalForm,ExpressionUUID->
+  "9ccd1697-159b-49f3-926c-816130d9cb62"],
+ ", ",
+ Cell[BoxData[
+  FormBox[
+   SubscriptBox["A", "21"], TraditionalForm]],
+  FormatType->TraditionalForm,ExpressionUUID->
+  "b353af77-e91d-4aad-b650-80150172ad2f"],
+ " to be the generator of ",
+ Cell[BoxData[
+  FormBox[
+   RowBox[{"t", "|->", 
+    RowBox[{"(", 
+     RowBox[{
+      RowBox[{"(", 
+       RowBox[{"0", ",", "t"}], ")"}], ",", "I", ",", "1"}], ")"}]}], 
+   TraditionalForm]],
+  FormatType->TraditionalForm,ExpressionUUID->
+  "86b150d6-6a6e-47d7-9a02-7ed950bfccd0"],
+ ", ",
+ Cell[BoxData[
+  FormBox[
+   SubscriptBox["A", "3"], TraditionalForm]],
+  FormatType->TraditionalForm,ExpressionUUID->
+  "d26b93fc-a14c-4f8f-919f-cc820119a4f3"],
+ " to be the generator of ",
+ Cell[BoxData[
+  FormBox[
+   RowBox[{"t", "|->", 
+    RowBox[{"(", 
+     RowBox[{"0", ",", 
+      SubscriptBox["R", "t"], ",", "1"}], ")"}]}], TraditionalForm]],
+  FormatType->TraditionalForm,ExpressionUUID->
+  "5486bbb4-0ab1-4dc8-8b52-3769a3e1b903"],
+ ", ",
+ Cell[BoxData[
+  FormBox[
+   SubscriptBox["A", "4"], TraditionalForm]],
+  FormatType->TraditionalForm,ExpressionUUID->
+  "7e83d2da-2e61-40c9-99bf-6da134557cce"],
+ " to be the generator of ",
+ Cell[BoxData[
+  FormBox[
+   RowBox[{"t", "|->", 
+    RowBox[{"(", 
+     RowBox[{"0", ",", "I", ",", 
+      SuperscriptBox["e", "t"]}], ")"}]}], TraditionalForm]],
+  FormatType->TraditionalForm,ExpressionUUID->
+  "9c83f00b-76e7-4b80-8da9-acd92113b0d7"],
+ ".\nRecall the matrix representation ",
+ Cell[BoxData[
+  FormBox[
+   RowBox[{
+    RowBox[{"(", 
+     RowBox[{
+      StyleBox["x",
+       FontWeight->"Bold"], ",", "R", ",", "a"}], ")"}], "\[LeftRightArrow]", 
+    
+    RowBox[{"(", 
+     TagBox[GridBox[{
+        {
+         RowBox[{"a", " ", "R"}], 
+         StyleBox["x",
+          FontWeight->"Bold"]},
+        {"0", "1"}
+       }],
+      "Grid"], ")"}]}], TraditionalForm]],
+  FormatType->TraditionalForm,ExpressionUUID->
+  "4ce15757-a6df-41d7-ab64-4edc695a10c5"],
+ ". There is a corresponding matrix representation for the Lie algebra ",
+ Cell[BoxData[
+  FormBox[
+   RowBox[{"\[GothicS]\[GothicI]\[GothicM]", "(", "2", ")"}], 
+   TraditionalForm]],
+  FormatType->TraditionalForm,ExpressionUUID->
+  "8c004eaf-a6ac-44a5-86f4-ba7049158e1d"],
+ ".\nSince the matrix representation is an isomorphism, the Lie group \
+exponential and logarithm get mapped to the matrix exponential and logarithm.\
+\nWe can then find the generators as follows:"
+}], "Text",ExpressionUUID->"ad3a3a2a-267b-4cb3-b4d3-10ae4ff3950d"],
+
+Cell[BoxData[{
+ RowBox[{
+  RowBox[{"$Assumptions", "=", 
+   RowBox[{
+    RowBox[{"c4", "\[Element]", "Reals"}], "&&", 
+    RowBox[{"c3", ">", 
+     RowBox[{"-", "\[Pi]"}]}], "&&", 
+    RowBox[{"c3", "<", "\[Pi]"}]}]}], ";"}], "\[IndentingNewLine]", 
+ RowBox[{
+  RowBox[{"A", "[", 
+   RowBox[{"x_", ",", "y_", ",", "\[Theta]_", ",", "a_"}], "]"}], ":=", 
+  RowBox[{"{", 
+   RowBox[{
+    RowBox[{"{", 
+     RowBox[{
+      RowBox[{"a", " ", 
+       RowBox[{"Cos", "[", "\[Theta]", "]"}]}], ",", 
+      RowBox[{
+       RowBox[{"-", "a"}], " ", 
+       RowBox[{"Sin", "[", "\[Theta]", "]"}]}], ",", "x"}], "}"}], ",", 
+    "\[IndentingNewLine]", 
+    RowBox[{"{", 
+     RowBox[{
+      RowBox[{"a", " ", 
+       RowBox[{"Sin", "[", "\[Theta]", "]"}]}], ",", 
+      RowBox[{"a", " ", 
+       RowBox[{"Cos", "[", "\[Theta]", "]"}]}], ",", "y"}], "}"}], ",", 
+    "\[IndentingNewLine]", 
+    RowBox[{"{", 
+     RowBox[{"0", ",", "0", ",", "1"}], "}"}]}], "}"}]}], "\[IndentingNewLine]", 
+ RowBox[{
+  RowBox[{"A", "[", 
+   RowBox[{"x", ",", "y", ",", "\[Theta]", ",", "a"}], "]"}], "//", 
+  "MatrixForm"}], "\[IndentingNewLine]", 
+ RowBox[{
+  RowBox[{"Areverse", "[", "M_", "]"}], ":=", 
+  RowBox[{"Module", "[", 
+   RowBox[{
+    RowBox[{"{", 
+     RowBox[{"x", ",", "y", ",", "\[Theta]", ",", "a"}], "}"}], ",", 
+    "\[IndentingNewLine]", 
+    RowBox[{
+     RowBox[{"x", "=", 
+      RowBox[{"M", "[", 
+       RowBox[{"[", 
+        RowBox[{"1", ",", "3"}], "]"}], "]"}]}], ";", "\[IndentingNewLine]", 
+     RowBox[{"y", "=", 
+      RowBox[{"M", "[", 
+       RowBox[{"[", 
+        RowBox[{"2", ",", "3"}], "]"}], "]"}]}], ";", "\[IndentingNewLine]", 
+     RowBox[{"a", "=", 
+      SqrtBox[
+       RowBox[{
+        SuperscriptBox[
+         RowBox[{"M", "[", 
+          RowBox[{"[", 
+           RowBox[{"1", ",", "1"}], "]"}], "]"}], "2"], "+", 
+        SuperscriptBox[
+         RowBox[{"M", "[", 
+          RowBox[{"[", 
+           RowBox[{"1", ",", "2"}], "]"}], "]"}], "2"]}]]}], ";", 
+     "\[IndentingNewLine]", 
+     RowBox[{"\[Theta]", "=", 
+      RowBox[{"ArcTan", "[", 
+       RowBox[{
+        RowBox[{"M", "[", 
+         RowBox[{"[", 
+          RowBox[{"1", ",", "1"}], "]"}], "]"}], ",", 
+        RowBox[{"M", "[", 
+         RowBox[{"[", 
+          RowBox[{"2", ",", "1"}], "]"}], "]"}]}], "]"}]}], ";", 
+     "\[IndentingNewLine]", 
+     RowBox[{"Return", "[", 
+      RowBox[{"{", 
+       RowBox[{"x", ",", "y", ",", "\[Theta]", ",", "a"}], "}"}], "]"}]}]}], 
+   "\[IndentingNewLine]", "]"}]}], "\[IndentingNewLine]", 
+ RowBox[{
+  RowBox[{"A1", "=", 
+   RowBox[{
+    RowBox[{"MatrixLog", "[", 
+     RowBox[{"A", "[", 
+      RowBox[{"1", ",", "0", ",", "0", ",", "1"}], "]"}], "]"}], "//", 
+    "FullSimplify"}]}], ";"}], "\[IndentingNewLine]", 
+ RowBox[{
+  RowBox[{"A2", "=", 
+   RowBox[{
+    RowBox[{"MatrixLog", "[", 
+     RowBox[{"A", "[", 
+      RowBox[{"0", ",", "1", ",", "0", ",", "1"}], "]"}], "]"}], "//", 
+    "FullSimplify"}]}], ";"}], "\[IndentingNewLine]", 
+ RowBox[{
+  RowBox[{"A3", "=", 
+   RowBox[{
+    RowBox[{"MatrixLog", "[", 
+     RowBox[{"A", "[", 
+      RowBox[{"0", ",", "0", ",", "1", ",", "1"}], "]"}], "]"}], "//", 
+    "FullSimplify"}]}], ";"}], "\[IndentingNewLine]", 
+ RowBox[{
+  RowBox[{"A4", "=", 
+   RowBox[{
+    RowBox[{"MatrixLog", "[", 
+     RowBox[{"A", "[", 
+      RowBox[{"0", ",", "0", ",", "0", ",", 
+       SuperscriptBox["\[ExponentialE]", "1"]}], "]"}], "]"}], "//", 
+    "FullSimplify"}]}], ";"}], "\[IndentingNewLine]", 
+ RowBox[{"A1", "//", "MatrixForm"}], "\[IndentingNewLine]", 
+ RowBox[{"A2", "//", "MatrixForm"}], "\[IndentingNewLine]", 
+ RowBox[{"A3", "//", "MatrixForm"}], "\[IndentingNewLine]", 
+ RowBox[{"A4", "//", "MatrixForm"}]}], "Input",
+ CellLabel->"In[17]:=",ExpressionUUID->"d42a840c-b637-4d2f-9cc4-ab42c8d9b1e5"],
+
+Cell["\<\
+We can confirm that we have indeed found the desired generators by taking the \
+matrix exponential:\
+\>", "Text",ExpressionUUID->"95041a08-b92a-4db7-893f-bf38294e6aa0"],
+
+Cell[BoxData[{
+ RowBox[{
+  RowBox[{"MatrixExp", "[", 
+   RowBox[{"t", " ", "A1"}], "]"}], "//", "MatrixForm"}], "\[IndentingNewLine]", 
+ RowBox[{
+  RowBox[{"MatrixExp", "[", 
+   RowBox[{"t", " ", "A2"}], "]"}], "//", "MatrixForm"}], "\[IndentingNewLine]", 
+ RowBox[{
+  RowBox[{"MatrixExp", "[", 
+   RowBox[{"t", " ", "A3"}], "]"}], "//", "MatrixForm"}], "\[IndentingNewLine]", 
+ RowBox[{
+  RowBox[{
+   RowBox[{"MatrixExp", "[", 
+    RowBox[{"t", " ", "A4"}], "]"}], "//", "FullSimplify"}], "//", 
+  "MatrixForm"}]}], "Input",
+ CellLabel->"In[29]:=",ExpressionUUID->"bb63d5e9-356e-4377-8a5d-01ca39a263c4"],
+
+Cell["\<\
+We now simply take the matrix exponential of a linear combination of our \
+basis elements, and read off the coordinates from the matrix representation:\
+\>", "Text",ExpressionUUID->"f83e5a78-c454-4a20-820a-31e0d85ca6cd"],
+
+Cell[BoxData[
+ RowBox[{
+  RowBox[{
+   RowBox[{"Areverse", "[", 
+    RowBox[{"MatrixExp", "[", 
+     RowBox[{
+      RowBox[{"c1", " ", "A1"}], "+", 
+      RowBox[{"c2", " ", "A2"}], "+", 
+      RowBox[{"c3", " ", "A3"}], "+", 
+      RowBox[{"c4", " ", "A4"}]}], "]"}], "]"}], "//", "FullSimplify"}], "//",
+   "MatrixForm"}]], "Input",
+ CellLabel->"In[33]:=",ExpressionUUID->"818eefba-c09e-4bcc-babe-7261949f5ce1"]
+}, Closed]]
+}, Open  ]]
+}, Open  ]]
+},
+WindowSize->{1435.5, 875.25},
+WindowMargins->{{Automatic, 1154.25}, {-51, Automatic}},
+Magnification:>1. Inherited,
+FrontEndVersion->"15.0 for Linux x86 (64-bit) (July 2, 2026)",
+StyleDefinitions->"Default.nb",
+ExpressionUUID->"f4dcff55-a20c-4b8e-8e37-a162295a99e2"
+]
+(* End of Notebook Content *)
+
+(* Internal cache information *)
+(*CellTagsOutline
+CellTagsIndex->{}
+*)
+(*CellTagsIndex
+CellTagsIndex->{}
+*)
+(*NotebookFileOutline
+Notebook[{
+Cell[CellGroupData[{
+Cell[576, 22, 78, 0, 96, "Title",ExpressionUUID->"f9fb0fb2-8e2b-4da1-a436-450404bca3ca"],
+Cell[657, 24, 11986, 300, 40, "Input",ExpressionUUID->"eb2537e0-daa3-40ca-90f6-8e1663564842"],
+Cell[12646, 326, 7685, 239, 303, "Text",ExpressionUUID->"29696d91-b4fe-4833-a315-84d0eac9e15c"],
+Cell[20334, 567, 143, 2, 29, "Input",ExpressionUUID->"113a02cd-3919-484c-8ba5-952d8420f952"],
+Cell[CellGroupData[{
+Cell[20502, 573, 92, 0, 65, "Section",ExpressionUUID->"e6ae342b-83f4-46a7-9aea-847bef164a6f"],
+Cell[20597, 575, 1515, 38, 77, "Text",ExpressionUUID->"c6f23a6d-487e-47cf-9f0a-2f8e4a31a6df"],
+Cell[22115, 615, 443, 7, 77, "Text",ExpressionUUID->"7e48369f-7f5d-418e-83d1-e2b2f66951eb"],
+Cell[22561, 624, 2072, 62, 135, "Input",ExpressionUUID->"667c58d2-057c-4b2f-bbab-54190ae91ce8"],
+Cell[24636, 688, 2856, 85, 78, "Text",ExpressionUUID->"811047bb-00dd-4651-8026-f140474d07d7"],
+Cell[CellGroupData[{
+Cell[27517, 777, 309, 8, 53, "Subsection",ExpressionUUID->"17704818-51c4-4cd2-be32-9410de0d8b4c"],
+Cell[27829, 787, 2029, 59, 99, "Text",ExpressionUUID->"93381d08-302e-4a8b-9673-71e79cb59530"],
+Cell[29861, 848, 524, 15, 49, "Input",ExpressionUUID->"4bffc701-2636-43d5-9b66-3637cf5c99c5"],
+Cell[30388, 865, 707, 19, 33, "Text",ExpressionUUID->"f8615265-3633-46fb-bc95-0fe08ba970d3"],
+Cell[31098, 886, 1344, 42, 71, "Input",ExpressionUUID->"2226ab68-69ae-4cd0-970a-39ab5a46b6b1"]
+}, Open  ]],
+Cell[CellGroupData[{
+Cell[32479, 933, 96, 0, 53, "Subsection",ExpressionUUID->"745461b0-06f5-4cd6-bed7-7c75b80ddf35"],
+Cell[32578, 935, 321, 8, 33, "Text",ExpressionUUID->"4b8fb2af-7675-4bf5-b343-445f562b3509"],
+Cell[32902, 945, 448, 13, 58, "Input",ExpressionUUID->"7232f3a7-e2fb-48a2-b521-a8749c44cced"],
+Cell[33353, 960, 431, 10, 33, "Text",ExpressionUUID->"e331de16-f959-4cd0-8c15-65639daa21b0"],
+Cell[33787, 972, 748, 23, 89, "Input",ExpressionUUID->"bdf5ae43-b239-45b6-8a05-d012f2f62cfe"],
+Cell[34538, 997, 2592, 75, 208, "Text",ExpressionUUID->"3fe02eab-d870-405c-aee4-a4d1e3503066"],
+Cell[37133, 1074, 309, 9, 49, "Input",ExpressionUUID->"656d1864-c34c-4225-ba8b-860cc25b3ebb"]
+}, Open  ]],
+Cell[CellGroupData[{
+Cell[37479, 1088, 113, 0, 53, "Subsection",ExpressionUUID->"e7ab942f-146f-4eb0-8d50-ac25db093912"],
+Cell[37595, 1090, 3917, 121, 70, "Text",ExpressionUUID->"ad3a3a2a-267b-4cb3-b4d3-10ae4ff3950d"],
+Cell[41515, 1213, 3775, 109, 70, "Input",ExpressionUUID->"d42a840c-b637-4d2f-9cc4-ab42c8d9b1e5"],
+Cell[45293, 1324, 178, 3, 70, "Text",ExpressionUUID->"95041a08-b92a-4db7-893f-bf38294e6aa0"],
+Cell[45474, 1329, 604, 15, 70, "Input",ExpressionUUID->"bb63d5e9-356e-4377-8a5d-01ca39a263c4"],
+Cell[46081, 1346, 230, 3, 70, "Text",ExpressionUUID->"f83e5a78-c454-4a20-820a-31e0d85ca6cd"],
+Cell[46314, 1351, 412, 11, 70, "Input",ExpressionUUID->"818eefba-c09e-4bcc-babe-7261949f5ce1"]
+}, Closed]]
+}, Open  ]]
+}, Open  ]]
+}
+]
+*)
+
+(* End of internal cache information *)
+

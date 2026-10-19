@@ -1,0 +1,131 @@
+{
+  "parameters": {
+    "new_chambers": 6,
+    "central_radius": 0.3,
+    "spacing": 0.025,
+    "half_width": 2.2,
+    "first_chamber_area": 0.28,
+    "chamber_area_ratio": 1.16,
+    "turning_angle_degrees": 65.0,
+    "formation_time": 2.5,
+    "curvature_coefficient": 0.003,
+    "interface_width": 0.04,
+    "adhesion_strength": 1.0,
+    "adhesion_range": 0.14,
+    "aperture_radius": 0.075,
+    "snapshots_per_chamber": 18,
+    "max_dt": 0.006
+  },
+  "max_diffuse_area_error_all_steps": 2.220446049250313e-16,
+  "central_wall_fixed": true,
+  "pixel_area_tolerance": 0.00031250000000000006,
+  "reports": [
+    {
+      "chamber": 2,
+      "parent": 1,
+      "target_area": 0.28,
+      "diffuse_final_area": 0.27999999999999997,
+      "frozen_pixel_area": 0.28,
+      "area_rounding_error": 0.0,
+      "contacts_with_earlier_chambers": [
+        1
+      ],
+      "aperture_pixels": 5,
+      "aperture_center": [
+        0.32499999999999085,
+        -7.993605777301127e-15
+      ],
+      "steps": 425
+    },
+    {
+      "chamber": 3,
+      "parent": 2,
+      "target_area": 0.32480000000000003,
+      "diffuse_final_area": 0.32480000000000003,
+      "frozen_pixel_area": 0.32500000000000007,
+      "area_rounding_error": 0.00020000000000003348,
+      "contacts_with_earlier_chambers": [
+        1,
+        2
+      ],
+      "aperture_pixels": 6,
+      "aperture_center": [
+        0.34999999999999076,
+        0.3749999999999907
+      ],
+      "steps": 425
+    },
+    {
+      "chamber": 4,
+      "parent": 3,
+      "target_area": 0.37676799999999994,
+      "diffuse_final_area": 0.376768,
+      "frozen_pixel_area": 0.37687500000000007,
+      "area_rounding_error": 0.00010700000000013477,
+      "contacts_with_earlier_chambers": [
+        3
+      ],
+      "aperture_pixels": 5,
+      "aperture_center": [
+        -0.10000000000000764,
+        0.4499999999999904
+      ],
+      "steps": 425
+    },
+    {
+      "chamber": 5,
+      "parent": 4,
+      "target_area": 0.4370508799999999,
+      "diffuse_final_area": 0.43705088,
+      "frozen_pixel_area": 0.43687500000000007,
+      "area_rounding_error": 0.0001758799999998506,
+      "contacts_with_earlier_chambers": [
+        1,
+        4
+      ],
+      "aperture_pixels": 5,
+      "aperture_center": [
+        -0.4750000000000063,
+        0.07499999999999174
+      ],
+      "steps": 425
+    },
+    {
+      "chamber": 6,
+      "parent": 5,
+      "target_area": 0.5069790207999999,
+      "diffuse_final_area": 0.5069790207999999,
+      "frozen_pixel_area": 0.5068750000000001,
+      "area_rounding_error": 0.00010402079999982661,
+      "contacts_with_earlier_chambers": [
+        1,
+        5
+      ],
+      "aperture_pixels": 5,
+      "aperture_center": [
+        -0.275000000000007,
+        -0.4500000000000064
+      ],
+      "steps": 425
+    },
+    {
+      "chamber": 7,
+      "parent": 6,
+      "target_area": 0.5880956641279999,
+      "diffuse_final_area": 0.5880956641279997,
+      "frozen_pixel_area": 0.5881250000000001,
+      "area_rounding_error": 2.9335872000268992e-05,
+      "contacts_with_earlier_chambers": [
+        2,
+        6
+      ],
+      "aperture_pixels": 6,
+      "aperture_center": [
+        0.29999999999999094,
+        -0.5250000000000061
+      ],
+      "steps": 425
+    }
+  ],
+  "growth_label": "Illustrative sigmoid for each chamber"
+}

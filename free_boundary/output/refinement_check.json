@@ -1,0 +1,11 @@
+{
+  "default_points": 81,
+  "refined_points": 121,
+  "default_max_dt": 0.004,
+  "refined_max_dt": 0.002,
+  "default_final_height": 1.6201129585434368,
+  "refined_final_height": 1.6161372640690432,
+  "relative_final_height_difference": 0.002459998022930163,
+  "sampled_symmetric_distance_between_final_polygonal_boundaries": 0.004076056046123735,
+  "note": "Sensitivity check, not a convergence proof; distances sampled at 1001 points per curve."
+}

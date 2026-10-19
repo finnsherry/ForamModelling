@@ -1,0 +1,9 @@
+{
+  "steps": 3428,
+  "max_area_error_all_steps": 3.581579477440755e-13,
+  "max_endpoint_error_all_steps": 0.0,
+  "growth_label": "Illustrative sigmoid; no biological calibration",
+  "initial_area": 0.14133533673264692,
+  "final_area": 1.8000000000003233,
+  "all_saved_curves_without_proper_crossings": true
+}
