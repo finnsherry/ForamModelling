@@ -10,7 +10,6 @@ import torch
 
 from .parameters import (
     AREA_TOLERANCE_EPS,
-    DT_SAFETY,
     DTYPE,
     NEWTON_STEPS,
     WINDOW_SPILL,
@@ -46,7 +45,7 @@ def laplacian(u, h):
 
 def stable_dt(h, diffusion, reaction_bound):
     """Explicit-Euler cap from the diffusion term and a bound on the reaction rate."""
-    return DT_SAFETY / (4 * diffusion / h**2 + reaction_bound)
+    return 1 / (4 * diffusion / h**2 + reaction_bound)
 
 
 def corrected_phase_area(phase, desired, allowed, aperture, h):

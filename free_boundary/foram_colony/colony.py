@@ -5,7 +5,6 @@ recorded for output is converted to numpy.
 """
 
 import math
-from dataclasses import dataclass, field
 
 import numpy as np
 import torch
@@ -15,15 +14,6 @@ from .growth import adhesion_field, nucleate, reaction, reaction_rate_bound, tar
 from .morphology import dilate, is_connected
 from .parameters import DTYPE, WINDOW_MARGIN, ColonyParameters
 from .solver import integrate, stable_dt
-
-
-@dataclass
-class Record:
-    """What the simulation accumulates for output."""
-    frames: list = field(default_factory=list)
-    history: list = field(default_factory=list)
-    reports: list = field(default_factory=list)
-    max_diffuse_error: float = 0.0
 
 
 def crisp_chamber(phase, allowed, aperture, area, h):
@@ -39,17 +29,17 @@ def crisp_chamber(phase, allowed, aperture, area, h):
     return mask
 
 
-def snapshot(record, labels, chamber, u, t, target, start_time, h):
+def snapshot(result, labels, chamber, u, t, target, start_time, h):
     """Store a crisp view of the growing chamber for the animation and history."""
     binary = crisp_chamber(u, chamber.allowed, chamber.aperture, target(t), h)
     image = labels.clone()
     image[binary] = chamber.cell
-    record.frames.append({
+    result["frames"].append({
         "labels": image.cpu().numpy(),
         "chamber": chamber.cell,
         "time": start_time + t,
     })
-    record.history.append([
+    result["history"].append([
         chamber.cell,
         t,
         start_time + t,
@@ -59,7 +49,7 @@ def snapshot(record, labels, chamber, u, t, target, start_time, h):
     ])
 
 
-def grow(labels, chamber, final_area, start_time, x, y, p, record):
+def grow(labels, chamber, final_area, start_time, x, y, p, result):
     """Evolve the new chamber's phase field from nucleation to final_area.
 
     Returns the final phase field and the number of time steps.
@@ -86,14 +76,16 @@ def grow(labels, chamber, final_area, start_time, x, y, p, record):
         dt_max=stable_dt(h, p.curvature_coefficient, reaction_rate_bound(p)),
         h=h,
         margin=math.ceil(WINDOW_MARGIN * p.interface_width / h),
-        on_snapshot=lambda u, t: snapshot(record, labels, chamber, u, t, target, start_time, h),
+        on_snapshot=lambda u, t: snapshot(result, labels, chamber, u, t, target, start_time, h),
     )
-    record.max_diffuse_error = max(record.max_diffuse_error, max_error)
+    result["max_diffuse_area_error_all_steps"] = max(
+        result["max_diffuse_area_error_all_steps"], max_error
+    )
     return u, steps
 
 
-def freeze(labels, chamber, u, final_area, steps, x, y, p, record):
-    """Commit the grown chamber to labels and report its contacts."""
+def freeze(labels, chamber, u, final_area, x, y, p):
+    """Commit the grown chamber to labels; returns its report, including its contacts."""
     h = p.spacing
     occupied = labels > 0
     mask = crisp_chamber(u, chamber.allowed, chamber.aperture, final_area, h)
@@ -108,7 +100,7 @@ def freeze(labels, chamber, u, final_area, steps, x, y, p, record):
     labels[mask] = chamber.cell
 
     frozen_area = h**2*int(mask.sum())
-    record.reports.append({
+    return {
         "chamber": chamber.cell,
         "parent": chamber.parent,
         "target_area": final_area,
@@ -118,8 +110,7 @@ def freeze(labels, chamber, u, final_area, steps, x, y, p, record):
         "contacts_with_earlier_chambers": contacts,
         "aperture_pixels": int(chamber.aperture.sum()),
         "aperture_center": [float(x[chamber.anchor]), float(y[chamber.anchor])],
-        "steps": steps,
-    })
+    }
 
 
 def simulate_colony(parameters=None, device="cpu"):
@@ -136,24 +127,27 @@ def simulate_colony(parameters=None, device="cpu"):
 
     labels, seed_reports = make_seed(p, x, y)
     seed_chambers = len(seed_reports)
-    record = Record(frames=[{
-        "labels": labels.clone().cpu().numpy(),
-        "chamber": seed_chambers,
-        "time": 0.0,
-    }])
+    # grow() appends to the frames and history and updates the largest area error.
+    result = {
+        "parameters": p,
+        "coordinates": x[0].cpu().numpy(),
+        "frames": [{
+            "labels": labels.clone().cpu().numpy(),
+            "chamber": seed_chambers,
+            "time": 0.0,
+        }],
+        "history": [],
+        "reports": [],
+        "seed_reports": seed_reports,
+        "max_diffuse_area_error_all_steps": 0.0,
+    }
 
     for index, final_area in enumerate(p.final_areas()):
         chamber = place_chamber(labels, index, seed_chambers, x, y, p)
-        u, steps = grow(labels, chamber, final_area, index*p.formation_time, x, y, p, record)
-        freeze(labels, chamber, u, final_area, steps, x, y, p, record)
+        u, steps = grow(labels, chamber, final_area, index*p.formation_time, x, y, p, result)
+        report = freeze(labels, chamber, u, final_area, x, y, p)
+        result["reports"].append(report | {"steps": steps})
 
-    return {
-        "parameters": p,
-        "coordinates": x[0].cpu().numpy(),
-        "frames": record.frames,
-        "labels": labels.cpu().numpy(),
-        "history": np.array(record.history),
-        "reports": record.reports,
-        "seed_reports": seed_reports,
-        "max_diffuse_area_error_all_steps": record.max_diffuse_error,
-    }
+    result["labels"] = labels.cpu().numpy()
+    result["history"] = np.array(result["history"])
+    return result

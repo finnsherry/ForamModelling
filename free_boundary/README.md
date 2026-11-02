@@ -6,11 +6,6 @@ an aperture on its immediate predecessor to a prescribed area. Older chambers
 are immobile and act as obstacles. A short-range adhesion field favours growth
 along existing walls.
 
-Chamber sizes and timing use an **illustrative sigmoid**, not measured
-foraminiferal data or a species-specific fit. All lengths, areas and times are
-dimensionless. This is an exploratory geometric construction, not a validated
-biological mechanism.
-
 ## Run
 
 Requires Python 3.10 or later.
@@ -54,8 +49,7 @@ python -m foram_colony --device cuda
 ```
 
 The default is `device="cpu"`. All computation is in float32 (`DTYPE` in
-`parameters.py`), which meets the area constraint to about 1e-7. CPU and GPU
-round differently, so their colonies can differ by a few pixels.
+`parameters.py`). CPU and GPU round differently, so their colonies can differ by a few pixels.
 
 A GPU pays off on fine grids. On the default 177×177 grid, per-step overhead
 dominates and the CPU is nearly as fast.

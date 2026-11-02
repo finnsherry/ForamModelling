@@ -35,11 +35,10 @@ def make_seed(p, x, y):
         r2 = r1 * p.second_piece_radius_ratio
         distance = p.seed_separation_fraction * (r1 + r2)
         angle = math.radians(p.seed_orientation_degrees)
-        axis = (math.cos(angle), math.sin(angle))
-        c1 = (-0.5 * distance * axis[0], -0.5 * distance * axis[1])
-        c2 = (0.5 * distance * axis[0], 0.5 * distance * axis[1])
-        first = torch.hypot(x - c1[0], y - c1[1]) <= r1
-        second = torch.hypot(x - c2[0], y - c2[1]) <= r2
+        # The disc centres are at -(dx, dy) and +(dx, dy).
+        dx, dy = 0.5*distance*math.cos(angle), 0.5*distance*math.sin(angle)
+        first = torch.hypot(x + dx, y + dy) <= r1
+        second = torch.hypot(x - dx, y - dy) <= r2
         labels[first] = 1
         labels[second & ~first] = 2
 

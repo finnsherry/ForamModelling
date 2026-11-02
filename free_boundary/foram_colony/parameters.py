@@ -19,9 +19,6 @@ WINDOW_TAIL = 1e-6
 WINDOW_SPILL = 1e-3
 WINDOW_MARGIN = 8
 
-# Safety factor on the explicit-Euler stability limit of the time step.
-DT_SAFETY = 1 # 0.35
-
 # Accepted area-projection residual, in multiples of DTYPE's machine epsilon
 # times the area: a float sum is only accurate to about eps relative.
 AREA_TOLERANCE_EPS = 64
