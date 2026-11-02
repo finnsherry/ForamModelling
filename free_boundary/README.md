@@ -17,14 +17,14 @@ Requires Python 3.10 or later.
 
 ```bash
 python -m pip install -r requirements.txt
-python foram_colony.py --seed-mode bilocular   # writes output/bilocular/
-python foram_colony.py --seed-mode single      # writes output/single/
+python -m foram_colony --seed-mode bilocular    # writes output/bilocular/
+python -m foram_colony --seed-mode unilocular   # writes output/unilocular/
 ```
 
 Results go to `output/<seed-mode>/` unless `--output` is given.
 
 Or open `Foraminiferal_Chamber_Growth.ipynb` and run its cells. The notebook
-imports `foram_colony.py` from the same folder. A default run takes a few
+imports the `foram_colony` package from the same folder. A default run takes a few
 seconds.
 
 From Python, simulating, saving results and rendering figures are separate
@@ -37,6 +37,20 @@ result = simulate_colony(ColonyParameters(seed_mode="bilocular", new_chambers=6)
 metrics = save_colony(result, "output/bilocular")   # csv, json, npz
 render_colony(result, "output/bilocular")           # gif, png (needs matplotlib)
 ```
+
+## Code layout
+
+The `foram_colony/` package:
+
+- `parameters.py`: `ColonyParameters` and the per-seed-mode labels and colours.
+- `phase_field.py`: pure numerics, i.e. the Allen–Cahn step, the area projection,
+  crisping a phase field to pixels, and the stable timestep.
+- `placement.py`: the model rules, i.e. seed geometry, aperture choice,
+  nucleation of each new chamber, and the adhesion field.
+- `colony.py`: the growth law and the driver. For each new chamber it runs
+  place → grow → freeze.
+- `output.py`: `save_colony` and `render_colony`.
+- `__main__.py`: the command line.
 
 ## Central seed
 
@@ -104,13 +118,13 @@ parameters = ColonyParameters(
 ```
 
 ```bash
-python foram_colony.py --seed-mode bilocular --second-radius-ratio 0.85 \
+python -m foram_colony --seed-mode bilocular --second-radius-ratio 0.85 \
   --seed-separation 0.60 --seed-angle 30 --output output/rotated_pair
 ```
 
-### Single central chamber
+### Unilocular seed
 
-`seed_mode="single"` uses one disc of radius `central_radius` as chamber 1.
+`seed_mode="unilocular"` uses one disc of radius `central_radius` as chamber 1.
 Chambers 2 onward grow from it. The disc is rasterized onto the grid; its area
 is not an empirical constraint.
 
@@ -135,14 +149,14 @@ biological law derived from the growth PDE.
 ## Parameters
 
 ```bash
-python foram_colony.py --chambers 6 --adhesion 1.0 --turn-angle 65
-python foram_colony.py --adhesion 0.0 --output output/no_adhesion
-python foram_colony.py --spacing 0.02 --output output/finer_grid
+python -m foram_colony --chambers 6 --adhesion 1.0 --turn-angle 65
+python -m foram_colony --adhesion 0.0 --output output/no_adhesion
+python -m foram_colony --spacing 0.02 --output output/finer_grid
 ```
 
 ```python
 parameters = ColonyParameters(
-    seed_mode="single",
+    seed_mode="unilocular",
     new_chambers=6,
     central_radius=0.30,
     first_chamber_area=0.28,
@@ -167,7 +181,7 @@ parameters = ColonyParameters(
 ## Specified final chamber sizes
 
 ```bash
-python foram_colony.py --chambers 3 --areas 0.30 0.39 0.48
+python -m foram_colony --chambers 3 --areas 0.30 0.39 0.48
 ```
 
 ```python
@@ -244,7 +258,7 @@ up to the nearest achievable pixel area (aperture included). Thus:
 - `growth_summary.png`: final labelled colony and target versus diffuse
   area.
 
-The `output/bilocular/` and `output/single/` folders hold completed default
+The `output/bilocular/` and `output/unilocular/` folders hold completed default
 runs. Their `additional_checks.json` files record extra checks made on earlier
 versions: adhesion against zero adhesion, custom target sizes, and a finer grid.
 
