@@ -50,21 +50,19 @@ result = simulate_colony(parameters, device="cuda")
 python -m foram_colony --device cuda
 ```
 
-The default is `device="cpu"` with the phase field in `torch.float32`. Pass
-`dtype=torch.float64` (`--dtype float64`) for double precision. Grid
-coordinates are always float64, so the seed and apertures don't depend on the
-phase-field precision. float32 meets the area constraint to about 1e-7 instead
-of 1e-16; occasionally a pixel in an animation frame differs between the two.
+The default is `device="cpu"`. All computation is in float32 (`DTYPE` in
+`parameters.py`), which meets the area constraint to about 1e-7. CPU and GPU
+round differently, so their colonies can differ by a few pixels.
 
 A GPU pays off on fine grids. On the default 177×177 grid, per-step overhead
-dominates and the CPU is about as fast.
+dominates and the CPU is nearly as fast.
 
 ## Code layout
 
 The `foram_colony/` package:
 
 - `parameters.py`: `ColonyParameters` and the per-seed-mode labels and colours.
-- `morphology.py`: binary dilation (conv2d), connectivity by flood fill, and a
+- `morphology.py`: binary dilation (boolean shifts), connectivity by flood fill, and a
   truncated min-plus distance transform, all on torch masks.
 - `phase_field.py`: pure numerics, i.e. the Allen–Cahn step, the area projection,
   crisping a phase field to pixels, and the stable timestep.
@@ -94,7 +92,7 @@ adjustable.
 
 The two generating discs have radii
 
-    r1 = 0.70 * central_radius,
+    r1 = first_piece_radius_fraction * central_radius,   (default 0.70)
     r2 = r1 * second_piece_radius_ratio,
 
 and centre separation
@@ -151,7 +149,9 @@ touch every previous chamber, which can be geometrically impossible.
 
 The next aperture is placed on the previous chamber's exposed wall, nearest a
 guide point that turns by `turning_angle_degrees` around the seed for each new
-chamber.
+chamber. The guide point spirals outward: for new chamber i (counting from 0)
+it lies at distance `guide_start_radius + i * guide_radius_increment` from the
+origin.
 
 ## Parameters
 
@@ -183,7 +183,14 @@ parameters = ColonyParameters(
   arrangement.
 - `chamber_area_ratio` sets the growth in completed chamber size from one
   chamber to the next.
-- Each chamber follows an illustrative normalized sigmoid over `formation_time`.
+- Each chamber follows an illustrative normalized sigmoid over `formation_time`,
+  with rate `growth_rate` and centred at `growth_midpoint_fraction` of it.
+- Each new chamber starts as a soft disc of `nucleus_radius`, centred
+  `nucleus_offset` outward from its aperture and cut off beyond
+  `nucleus_support_radius`.
+
+Numerical settings that don't define the model (precision, tolerances, the
+time-stepping window) are constants at the top of `parameters.py`.
 
 ## Specified final chamber sizes
 
@@ -234,6 +241,9 @@ chosen aperture patch, just outside the parent wall. These values are held
 fixed while the current chamber grows. A compactly supported initial seed
 prevents spontaneous nucleation far away. Time stepping is explicit, with a
 timestep cap set by the diffusive and reaction stability limits.
+Each step is computed only on a window around the growing chamber, refitted at
+every snapshot. If the chamber reaches the window border, the window is widened
+and the interval repeated, so the result is the same as on the full grid.
 
 When a chamber is frozen, it takes the pixels with the highest phase values,
 up to the nearest achievable pixel area (aperture included). Thus:

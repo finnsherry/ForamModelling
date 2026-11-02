@@ -6,8 +6,8 @@ from dataclasses import dataclass
 
 import torch
 
-from .morphology import SQUARE, component_containing, dilate, distance_to, is_connected
-from .parameters import SEED_STYLES
+from .morphology import component_containing, dilate, distance_to, is_connected
+from .parameters import ADHESION_CUTOFF_RANGES, MIN_SEED_PIXELS, SEED_STYLES
 
 
 @dataclass
@@ -32,7 +32,7 @@ def make_seed(p, x, y):
     if p.seed_mode == "unilocular":
         labels[torch.hypot(x, y) <= p.central_radius] = 1
     else:
-        r1 = 0.70 * p.central_radius
+        r1 = p.first_piece_radius_fraction * p.central_radius
         r2 = r1 * p.second_piece_radius_ratio
         distance = p.seed_separation_fraction * (r1 + r2)
         angle = math.radians(p.seed_orientation_degrees)
@@ -46,7 +46,7 @@ def make_seed(p, x, y):
     reports = []
     for cell, name in enumerate(SEED_STYLES[p.seed_mode]["names"], start=1):
         mask = labels == cell
-        if int(mask.sum()) < 12 or not is_connected(mask):
+        if int(mask.sum()) < MIN_SEED_PIXELS or not is_connected(mask):
             raise ValueError("An initial compartment is missing, disconnected or under-resolved. Refine the grid or adjust seed geometry.")
         reports.append({"chamber":cell,"name":name,"pixel_area":float(mask.sum())*p.spacing**2,
                         "centroid":[float(x[mask].mean()),float(y[mask].mean())]})
@@ -55,8 +55,8 @@ def make_seed(p, x, y):
     return labels, reports
 
 
-def select_aperture(labels, parent, x, y, angle, radius, guide_index=None):
-    """Choose an exposed parent wall nearest a prescribed coiling guide point."""
+def select_aperture(labels, parent, x, y, angle, guide_radius, radius):
+    """Choose an exposed parent wall nearest the guide point at (guide_radius, angle)."""
     parent_mask = labels == parent
     candidates = dilate(parent_mask) & (labels == 0)
     candidates[[0, -1], :] = False
@@ -65,8 +65,6 @@ def select_aperture(labels, parent, x, y, angle, radius, guide_index=None):
     if len(rows) == 0:
         raise RuntimeError("The previous chamber has no exposed boundary.")
     theta = math.radians(angle)
-    # This aperture-placement rule is a geometric input, not derived biology.
-    guide_radius = 0.55 + 0.075 * ((parent - 1) if guide_index is None else guide_index)
     guide = (guide_radius * math.cos(theta), guide_radius * math.sin(theta))
     scores = (x[rows, columns] - guide[0])**2 + (y[rows, columns] - guide[1])**2
     selected = int(torch.argmin(scores))
@@ -74,7 +72,7 @@ def select_aperture(labels, parent, x, y, angle, radius, guide_index=None):
     distance = torch.hypot(x - x[cy, cx], y - y[cy, cx])
     aperture = candidates & (distance <= radius)
     # The outside pixel layer of a curved wall can be diagonally connected.
-    aperture = component_containing(aperture, (cy, cx), SQUARE)
+    aperture = component_containing(aperture, (cy, cx), kernel="square")
     return aperture, (cy, cx)
 
 
@@ -85,32 +83,32 @@ def place_chamber(labels, index, seed_chambers, x, y, p):
     allowed[:, [0, -1]] = False
     aperture, anchor = select_aperture(labels, parent, x, y,
         index*p.turning_angle_degrees + p.seed_orientation_degrees,
-        p.aperture_radius, guide_index=index)
+        p.guide_start_radius + index*p.guide_radius_increment, p.aperture_radius)
     if bool((aperture & ~allowed).any()):
         raise RuntimeError("Selected aperture intersects the computational boundary.")
     return Chamber(cell, parent, allowed, aperture, anchor)
 
 
-def nucleate(labels, chamber, x, y, p, dtype):
+def nucleate(labels, chamber, x, y, p):
     """Initial u: a soft disc just outside the aperture, pointing away from the parent."""
     parent = labels == chamber.parent
     center = torch.stack((x[parent].mean(), y[parent].mean()))
     anchor = torch.stack((x[chamber.anchor], y[chamber.anchor]))
     outward = anchor - center
     outward /= max(float(torch.linalg.norm(outward)), 1e-12)
-    blob_center = anchor + 0.07*outward
+    blob_center = anchor + p.nucleus_offset*outward
     distance = torch.hypot(x - blob_center[0], y - blob_center[1])
-    u = (1 / (1 + torch.exp((distance - 0.13) / p.interface_width))) * chamber.allowed
+    u = (1 / (1 + torch.exp((distance - p.nucleus_radius) / p.interface_width))) * chamber.allowed
     # Compact support prevents phase nucleation far from the seeded chamber.
-    u[distance > 0.32] = 0.0
+    u[distance > p.nucleus_support_radius] = 0.0
     u[chamber.aperture] = 1.0
-    return u.to(dtype)
+    return u
 
 
-def adhesion_field(occupied, p, dtype):
+def adhesion_field(occupied, p):
     """Attraction that decays with distance from any existing chamber.
 
-    Cut off at 5 adhesion ranges, where it has fallen below 0.7% of its wall value.
+    Zero beyond ADHESION_CUTOFF_RANGES adhesion ranges.
     """
-    distance = distance_to(occupied, p.spacing, 5 * p.adhesion_range)
-    return (p.adhesion_strength * torch.exp(-distance / p.adhesion_range)).to(dtype)
+    distance = distance_to(occupied, p.spacing, ADHESION_CUTOFF_RANGES * p.adhesion_range)
+    return (p.adhesion_strength * torch.exp(-distance / p.adhesion_range))

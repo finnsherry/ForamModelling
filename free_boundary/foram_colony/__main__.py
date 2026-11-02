@@ -3,8 +3,6 @@ import argparse
 import json
 from pathlib import Path
 
-import torch
-
 from .parameters import ColonyParameters, SEED_STYLES
 from .colony import simulate_colony
 from .output import save_colony, render_colony
@@ -23,14 +21,13 @@ def main():
     parser.add_argument("--seed-separation",type=float,default=.60)
     parser.add_argument("--seed-angle",type=float,default=0.)
     parser.add_argument("--device",default="cpu",help="Torch device for the phase-field loop, e.g. cuda")
-    parser.add_argument("--dtype",choices=["float32","float64"],default="float32")
     args=parser.parse_args()
     p=ColonyParameters(new_chambers=args.chambers,adhesion_strength=args.adhesion,
                        turning_angle_degrees=args.turn_angle,spacing=args.spacing,
                        seed_mode=args.seed_mode,second_piece_radius_ratio=args.second_radius_ratio,
                        seed_separation_fraction=args.seed_separation,seed_orientation_degrees=args.seed_angle)
     output=args.output or Path("output")/args.seed_mode
-    result=simulate_colony(p,args.areas,device=args.device,dtype=getattr(torch,args.dtype))
+    result=simulate_colony(p,args.areas,device=args.device)
     metrics=save_colony(result,output)
     render_colony(result,output)
     print(json.dumps(metrics,indent=2))
