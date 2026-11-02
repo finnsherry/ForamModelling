@@ -4,5 +4,4 @@ __pycache__/
 .ipynb_checkpoints/
 
 # Generated simulation output
-free_boundary/central_output/
-free_boundary/bilocular_output/
+free_boundary/output/

@@ -4,7 +4,7 @@ Existing chambers are immobile, excluded regions. New chambers attach to a
 fixed aperture on their immediate predecessor. A short-range adhesion field
 favours growing near any existing chamber. This is a grid phase-field model.
 
-Run: python foram_colony.py --output bilocular_output
+Run: python foram_colony.py --seed-mode bilocular   (writes output/bilocular/)
 """
 from __future__ import annotations
 
@@ -44,7 +44,7 @@ class ColonyParameters:
 
 
 # Everything that differs between the seed modes, apart from the geometry
-# constructed in make_central_seed.
+# constructed in make_seed.
 SEED_STYLES = {
     "single": {
         "names": ["Original one-chamber central seed"],
@@ -143,7 +143,7 @@ def select_aperture(labels, parent, x, y, angle, radius, guide_index=None):
     return aperture, (cy, cx)
 
 
-def make_central_seed(p, x, y):
+def make_seed(p, x, y):
     """Two distinct adjacent compartments, or the original one-disc seed.
 
     For a bilocular seed, two overlapping generating discs are partitioned:
@@ -196,7 +196,7 @@ def simulate_colony(parameters=None, chamber_areas=None):
     h = p.spacing
     coords = np.arange(-p.half_width, p.half_width + h/2, h)
     x, y = np.meshgrid(coords, coords)
-    labels, seed_reports = make_central_seed(p, x, y)
+    labels, seed_reports = make_seed(p, x, y)
     seed_chambers = len(seed_reports)
     initial_labels = labels.copy()
     if chamber_areas is None:
@@ -289,7 +289,7 @@ def save_colony(result, output):
     """Write numerical results and validation metrics; returns the metrics."""
     output=Path(output); output.mkdir(parents=True,exist_ok=True)
     p=result["parameters"]; history=result["history"]
-    with (output/"central_area_history.csv").open("w",newline="") as stream:
+    with (output/"area_history.csv").open("w",newline="") as stream:
         writer=csv.writer(stream)
         writer.writerow(["chamber","formation_time","global_time","target_area","diffuse_area","pixel_area"])
         writer.writerows(history)
@@ -297,8 +297,8 @@ def save_colony(result, output):
         "pixel_area_tolerance":result["pixel_area_tolerance"],
         "seed_chambers":result["seed_chambers"],"seed_reports":result["seed_reports"],
         "reports":result["reports"],"growth_label":result["growth_label"]}
-    (output/"central_validation.json").write_text(json.dumps(metrics,indent=2))
-    np.savez_compressed(output/"central_simulation.npz",labels=result["labels"],initial_labels=result["initial_labels"],
+    (output/"validation.json").write_text(json.dumps(metrics,indent=2))
+    np.savez_compressed(output/"simulation.npz",labels=result["labels"],initial_labels=result["initial_labels"],
                         coordinates=result["coordinates"],history=history)
     return metrics
 
@@ -336,7 +336,7 @@ def render_colony(result, output):
         return image,title
     sequence=[0]*12+list(range(len(frames)))+[len(frames)-1]*12
     anim=FuncAnimation(fig,update,frames=sequence,interval=100)
-    anim.save(output/"central_chamber_growth.gif",writer=PillowWriter(fps=12))
+    anim.save(output/"chamber_growth.gif",writer=PillowWriter(fps=12))
     plt.close(fig)
     fig,ax=plt.subplots(figsize=(5.0,4.3),layout="constrained")
     initial=result["initial_labels"]
@@ -349,7 +349,7 @@ def render_colony(result, output):
     for report in result["seed_reports"]:
         ax.text(*report["centroid"],str(report["chamber"]),ha="center",va="center",color="white",weight="bold",fontsize=15)
     ax.set_title(style["seed_title"])
-    fig.savefig(output/"central_seed.png",dpi=170);plt.close(fig)
+    fig.savefig(output/"seed.png",dpi=170);plt.close(fig)
     fig,(ax,graph)=plt.subplots(1,2,figsize=(11,5.4),layout="constrained"); setup(ax)
     ax.imshow(result["labels"],origin="lower",extent=extent,cmap=cmap,norm=norm,interpolation="nearest")
     for cell in range(1,total_chambers+1):
@@ -363,12 +363,12 @@ def render_colony(result, output):
         graph.plot(points[:,2],points[:,3],color=color,lw=2)
         graph.plot(points[:,2],points[:,4],"--",color="black",lw=.7)
     graph.set(xlabel="global time",ylabel="new chamber area",title="Targets (colour) and diffuse areas (dashes)")
-    fig.savefig(output/"central_growth_summary.png",dpi=170);plt.close(fig)
+    fig.savefig(output/"growth_summary.png",dpi=170);plt.close(fig)
 
 
 def main():
     parser=argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--output",default="bilocular_output")
+    parser.add_argument("--output",help="Output directory (default: output/<seed-mode>)")
     parser.add_argument("--chambers",type=int,default=6,help="Number of NEW chambers")
     parser.add_argument("--adhesion",type=float,default=1.,help="Attraction toward fixed older walls")
     parser.add_argument("--turn-angle",type=float,default=65.,help="Coiling guide angle increment in degrees")
@@ -383,9 +383,10 @@ def main():
                        turning_angle_degrees=args.turn_angle,spacing=args.spacing,
                        seed_mode=args.seed_mode,second_piece_radius_ratio=args.second_radius_ratio,
                        seed_separation_fraction=args.seed_separation,seed_orientation_degrees=args.seed_angle)
+    output=args.output or Path("output")/args.seed_mode
     result=simulate_colony(p,args.areas)
-    metrics=save_colony(result,args.output)
-    render_colony(result,args.output)
+    metrics=save_colony(result,output)
+    render_colony(result,output)
     print(json.dumps(metrics,indent=2))
 
 

@@ -17,9 +17,11 @@ Requires Python 3.10 or later.
 
 ```bash
 python -m pip install -r requirements.txt
-python foram_colony.py --seed-mode bilocular --output bilocular_output
-python foram_colony.py --seed-mode single --output central_output
+python foram_colony.py --seed-mode bilocular   # writes output/bilocular/
+python foram_colony.py --seed-mode single      # writes output/single/
 ```
+
+Results go to `output/<seed-mode>/` unless `--output` is given.
 
 Or open `Foraminiferal_Chamber_Growth.ipynb` and run its cells. The notebook
 imports `foram_colony.py` from the same folder. A default run takes a few
@@ -32,8 +34,8 @@ steps:
 from foram_colony import ColonyParameters, simulate_colony, save_colony, render_colony
 
 result = simulate_colony(ColonyParameters(seed_mode="bilocular", new_chambers=6))
-metrics = save_colony(result, "bilocular_output")   # csv, json, npz
-render_colony(result, "bilocular_output")           # gif, png (needs matplotlib)
+metrics = save_colony(result, "output/bilocular")   # csv, json, npz
+render_colony(result, "output/bilocular")           # gif, png (needs matplotlib)
 ```
 
 ## Central seed
@@ -79,7 +81,7 @@ Compartment 2 is the part of its own disc that lies outside compartment 1. So
 the interiors don't overlap, and the shared interface connects the two. The
 second compartment is usually crescent-like rather than a full disc, so the
 radius ratio is **not** an area ratio. The actual compartment areas are
-reported in `central_validation.json`. With the defaults they are 0.140625 and
+reported in `validation.json`. With the defaults they are 0.140625 and
 0.125625. These come from the generated geometry, not from measured chamber
 volumes.
 
@@ -103,7 +105,7 @@ parameters = ColonyParameters(
 
 ```bash
 python foram_colony.py --seed-mode bilocular --second-radius-ratio 0.85 \
-  --seed-separation 0.60 --seed-angle 30 --output rotated_pair
+  --seed-separation 0.60 --seed-angle 30 --output output/rotated_pair
 ```
 
 ### Single central chamber
@@ -134,8 +136,8 @@ biological law derived from the growth PDE.
 
 ```bash
 python foram_colony.py --chambers 6 --adhesion 1.0 --turn-angle 65
-python foram_colony.py --adhesion 0.0 --output no_adhesion
-python foram_colony.py --spacing 0.02 --output finer_grid
+python foram_colony.py --adhesion 0.0 --output output/no_adhesion
+python foram_colony.py --spacing 0.02 --output output/finer_grid
 ```
 
 ```python
@@ -222,27 +224,27 @@ up to the nearest achievable pixel area (aperture included). Thus:
 - older labels are immobile by construction: a new chamber can only claim
   pixels outside every existing chamber.
 
-`central_validation.json` reports per-chamber contacts and area errors.
+`validation.json` reports per-chamber contacts and area errors.
 
 ## Output files
 
 `save_colony` writes:
 
-- `central_area_history.csv`: chamber, local and global time, target, diffuse
+- `area_history.csv`: chamber, local and global time, target, diffuse
   and frozen pixel area at each snapshot.
-- `central_validation.json`: parameters, seed and per-chamber reports, and area
+- `validation.json`: parameters, seed and per-chamber reports, and area
   errors.
-- `central_simulation.npz`: final and initial label grids, coordinates and
+- `simulation.npz`: final and initial label grids, coordinates and
   history.
 
 `render_colony` writes:
 
-- `central_chamber_growth.gif`: animation of the whole growth sequence.
-- `central_seed.png`: the initial seed compartments.
-- `central_growth_summary.png`: final labelled colony and target versus diffuse
+- `chamber_growth.gif`: animation of the whole growth sequence.
+- `seed.png`: the initial seed compartments.
+- `growth_summary.png`: final labelled colony and target versus diffuse
   area.
 
-The `bilocular_output/` and `central_output/` folders hold completed default
+The `output/bilocular/` and `output/single/` folders hold completed default
 runs. Their `additional_checks.json` files record extra checks made on earlier
 versions: adhesion against zero adhesion, custom target sizes, and a finer grid.
 
