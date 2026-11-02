@@ -38,11 +38,34 @@ metrics = save_colony(result, "output/bilocular")   # csv, json, npz
 render_colony(result, "output/bilocular")           # gif, png (needs matplotlib)
 ```
 
+### GPU
+
+The simulation runs in PyTorch and can run on a GPU:
+
+```python
+result = simulate_colony(parameters, device="cuda")
+```
+
+```bash
+python -m foram_colony --device cuda
+```
+
+The default is `device="cpu"` with the phase field in `torch.float32`. Pass
+`dtype=torch.float64` (`--dtype float64`) for double precision. Grid
+coordinates are always float64, so the seed and apertures don't depend on the
+phase-field precision. float32 meets the area constraint to about 1e-7 instead
+of 1e-16; occasionally a pixel in an animation frame differs between the two.
+
+A GPU pays off on fine grids. On the default 177×177 grid, per-step overhead
+dominates and the CPU is about as fast.
+
 ## Code layout
 
 The `foram_colony/` package:
 
 - `parameters.py`: `ColonyParameters` and the per-seed-mode labels and colours.
+- `morphology.py`: binary dilation (conv2d), connectivity by flood fill, and a
+  truncated min-plus distance transform, all on torch masks.
 - `phase_field.py`: pure numerics, i.e. the Allen–Cahn step, the area projection,
   crisping a phase field to pixels, and the stable timestep.
 - `placement.py`: the model rules, i.e. seed geometry, aperture choice,
@@ -64,21 +87,10 @@ The seed has **two distinct connected chambers**, labelled 1 and 2. New
 chambers start at 3, and chamber 3 grows from chamber 2. Both initial
 compartments stay fixed throughout.
 
-They are meant to represent the initial chamber (proloculus/protoconch) plus
-the following chamber (deuteroloculus/deuteroconch). They are compartments of
-one foraminifer, not two separate organisms. Terminology and initial geometry
-depend on the taxon, and this two-disc construction is not a claim about most
-foraminifera.
-
-For example, Takagi, Kurasawa and Kimoto (2020) describe two-chambered offspring
-of Globigerinita uvula, with the second chamber commonly smaller than the
-proloculus: https://doi.org/10.1093/plankt/fbaa033.
-Bilocular embryonic structures in some larger benthic taxa can have different
-relative sizes and enclosure geometry; see the orthophragminid study at
-https://doi.org/10.1080/09853111.2015.1026795.
-These references motivate making the initial compartments adjustable. They do
-not supply the example parameter values, nor do they validate the growth law
-that follows.
+They represent the initial chamber (proloculus/protoconch) plus the following
+chamber (deuteroloculus/deuteroconch) of one foraminifer. Their relative sizes
+and geometry vary between taxa (see References), which is why the seed is
+adjustable.
 
 The two generating discs have radii
 
@@ -96,15 +108,13 @@ the interiors don't overlap, and the shared interface connects the two. The
 second compartment is usually crescent-like rather than a full disc, so the
 radius ratio is **not** an area ratio. The actual compartment areas are
 reported in `validation.json`. With the defaults they are 0.140625 and
-0.125625. These come from the generated geometry, not from measured chamber
-volumes.
+0.125625.
 
 `seed_separation_fraction` must be between zero and one. Extreme separations or
 radius ratios can leave a compartment missing or under-resolved, and the code
 rejects such cases. The grid must resolve both compartments and their contact.
-There is no explicit septal thickness or transport through an internal foramen;
-the shared interface stands in for a prescribed connection. The pair is
-initialized all at once; the code doesn't model how the pair itself formed.
+The pair is initialized all at once, and the shared interface stands in for the
+connection between them.
 
 ```python
 parameters = ColonyParameters(
@@ -125,8 +135,7 @@ python -m foram_colony --seed-mode bilocular --second-radius-ratio 0.85 \
 ### Unilocular seed
 
 `seed_mode="unilocular"` uses one disc of radius `central_radius` as chamber 1.
-Chambers 2 onward grow from it. The disc is rasterized onto the grid; its area
-is not an empirical constraint.
+Chambers 2 onward grow from it.
 
 ## What connects to what?
 
@@ -138,13 +147,11 @@ be overwritten, and a new chamber cannot overlap their interiors.
 A short-range adhesion field also favours growth near **all** older chamber
 walls. This can produce extra contacts with chambers other than the immediate
 predecessor, and the default result has some. A new chamber is not required to
-touch every previous chamber, which can be geometrically impossible. These are
-geometric contacts and a designated attachment patch. Cytoplasmic transport
-through apertures is not simulated.
+touch every previous chamber, which can be geometrically impossible.
 
-The next aperture is placed on the previous chamber's exposed wall, using a
-coiling guide angle around the seed. That is a prescribed placement rule, not a
-biological law derived from the growth PDE.
+The next aperture is placed on the previous chamber's exposed wall, nearest a
+guide point that turns by `turning_angle_degrees` around the seed for each new
+chamber.
 
 ## Parameters
 
@@ -174,8 +181,8 @@ parameters = ColonyParameters(
 - `adhesion_range` sets the distance scale of the attraction.
 - `turning_angle_degrees` changes aperture placement and therefore the coiling
   arrangement.
-- `chamber_area_ratio` sets an illustrative increase in completed chamber size.
-  It is not an estimated foraminiferal parameter.
+- `chamber_area_ratio` sets the growth in completed chamber size from one
+  chamber to the next.
 - Each chamber follows an illustrative normalized sigmoid over `formation_time`.
 
 ## Specified final chamber sizes
@@ -213,9 +220,10 @@ existing chambers, the provisional evolution is
 
 where gamma is `curvature_coefficient` and ell is `interface_width`. The first
 two terms are the Allen–Cahn equation, which moves the interface approximately
-by curvature. d_old is the distance to any previously completed chamber. The
-positive adhesion term raises the local drive near old walls. It is a
-phenomenological attachment preference, not a force inferred from experiments.
+by curvature. d_old is the distance to any previously completed chamber. It is
+computed exactly up to 5 adhesion ranges; beyond that the adhesion term is set
+to zero, since it has already fallen below 0.7% of its value at the wall. The
+positive adhesion term raises the local drive near old walls.
 The scalar lambda is applied as a numerical correction after each time step, so
 that
 
@@ -258,23 +266,29 @@ up to the nearest achievable pixel area (aperture included). Thus:
 - `growth_summary.png`: final labelled colony and target versus diffuse
   area.
 
-The `output/bilocular/` and `output/unilocular/` folders hold completed default
-runs. Their `additional_checks.json` files record extra checks made on earlier
-versions: adhesion against zero adhesion, custom target sizes, and a finer grid.
-
 ## Limits
 
-This remains an exploratory geometric construction. It does not model
-calcification, wall thickness, chemistry, mechanics, or biological aperture
-selection. Attraction strength, coiling angle, sizes and timing are inputs.
+This is an exploratory geometric construction, not a validated biological
+mechanism. It does not model calcification, wall thickness, septa, chemistry,
+mechanics, cytoplasmic transport or biological aperture selection. Aperture
+placement, adhesion strength, chamber sizes and timing are inputs, not
+quantities derived from data. The adhesion term is a phenomenological
+attachment preference, not a measured force. The bilocular seed is one
+adjustable two-disc construction, not a description of any particular taxon.
+
 Strong attraction or confined geometry can make the constraints incompatible;
 the routine stops if a chamber disconnects or reaches the computational edge.
 Grid refinement and sensitivity checks remain necessary for quantitative use.
 
-The recorded checks establish software behaviour, not biological calibration
-or mathematical convergence.
-
 ## References
+
+Bilocular embryonic chambers:
+Takagi, Kurasawa and Kimoto (2020) describe two-chambered offspring of
+Globigerinita uvula, with the second chamber commonly smaller than the
+proloculus: https://doi.org/10.1093/plankt/fbaa033.
+Bilocular embryonic structures in some larger benthic taxa have different
+relative sizes and enclosure geometry; see the orthophragminid study at
+https://doi.org/10.1080/09853111.2015.1026795.
 
 For measurements and growth estimation:
 J. Hohenegger and A. Briguglio (2014), *Methods for Estimating Individual Growth
@@ -284,5 +298,4 @@ https://doi.org/10.1007/978-4-431-54388-6_3
 For volume-preserving curvature flow with obstacles:
 J. Jang, *Existence of weak solutions to volume-preserving mean curvature flow
 with obstacles*, arXiv:2501.03455. https://arxiv.org/abs/2501.03455
-That paper concerns preserved volume. It does not validate the growing-area,
-adhesion-driven construction implemented here.
+That paper concerns preserved volume, not the growing area used here.

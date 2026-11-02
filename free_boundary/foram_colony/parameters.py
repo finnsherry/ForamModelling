@@ -31,11 +31,11 @@ class ColonyParameters:
 # constructed in placement.make_seed.
 SEED_STYLES = {
     "unilocular": {
-        "names": ["Original one-chamber central seed"],
+        "names": ["Initial chamber (proloculus)"],
         "colors": None,
-        "animation_title": "Central seed",
+        "animation_title": "Unilocular seed",
         "first_frame": "chamber 1",
-        "seed_title": "Original unilocular central chamber",
+        "seed_title": "Unilocular central chamber",
         "summary_title": "Central chamber 1; sequential attachments",
     },
     "bilocular": {
