@@ -38,6 +38,7 @@ from foram_colony import ColonyParameters, simulate_colony, save_colony, render_
 result = simulate_colony(ColonyParameters(seed_mode="bilocular", new_chambers=6))
 metrics = save_colony(result, "output/bilocular")   # csv, json, npz
 render_colony(result, "output/bilocular")           # gif, png (needs matplotlib)
+render_colony(result, "output/bilocular", animation=False)   # png only, faster
 ```
 
 ### GPU
@@ -273,8 +274,8 @@ up to the nearest achievable pixel area (aperture included). Thus:
 
 `render_colony` writes:
 
-- `chamber_growth.gif`: animation of the whole growth sequence.
-- `seed.png`: the initial seed compartments.
+- `chamber_growth.gif`: animation of the whole growth sequence, unless
+  `animation=False` (`--no-animation` on the command line).
 - `growth_summary.png`: final labelled colony and target versus diffuse
   area.
 

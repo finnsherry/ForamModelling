@@ -82,7 +82,7 @@ def grow(labels, chamber, final_area, start_time, x, y, p, record):
         reaction=lambda u, window: reaction(u, window.crop(adhesion), p),
         target=target,
         save_times=[p.formation_time * i / n for i in range(1, n + 1)],
-        dt_max=stable_dt(h, p.curvature_coefficient, reaction_rate_bound(p), p.max_dt),
+        dt_max=stable_dt(h, p.curvature_coefficient, reaction_rate_bound(p)),
         h=h,
         margin=math.ceil(WINDOW_MARGIN * p.interface_width / h),
         on_snapshot=lambda u, t: snapshot(record, labels, chamber, u, t, target, start_time, h),

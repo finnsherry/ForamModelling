@@ -22,8 +22,6 @@ def target_area(initial_area, final_area, p):
     """Prescribed chamber area over time.
 
     A sigmoid from initial_area at t = 0 to final_area at p.formation_time.
-
-    Illustrative, NOT a fit to foraminiferal observations.
     """
     end_time = p.formation_time
     rate, midpoint = p.growth_rate, p.growth_midpoint_fraction * end_time
@@ -72,9 +70,9 @@ def double_well_coefficient(p):
 
 def reaction(u, adhesion, p):
     """The non-diffusive part of du/dt: the double well plus adhesion."""
-    return double_well_coefficient(p)*u*(1-u)*(u-0.5) + adhesion*u*(1-u)
+    return double_well_coefficient(p) * u * (1 - u) * (u - 0.5) + adhesion * u * (1 - u)
 
 
 def reaction_rate_bound(p):
     """Upper bound on |d reaction / du| over u in [0, 1], for the explicit time-step limit."""
-    return 3*double_well_coefficient(p) + p.adhesion_strength
+    return 3 * double_well_coefficient(p) + p.adhesion_strength

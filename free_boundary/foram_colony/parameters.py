@@ -20,7 +20,7 @@ WINDOW_SPILL = 1e-3
 WINDOW_MARGIN = 8
 
 # Safety factor on the explicit-Euler stability limit of the time step.
-DT_SAFETY = 0.35
+DT_SAFETY = 1 # 0.35
 
 # Accepted area-projection residual, in multiples of DTYPE's machine epsilon
 # times the area: a float sum is only accurate to about eps relative.
@@ -104,9 +104,6 @@ class ColonyParameters:
     snapshots_per_chamber: int = 18
     """Frames recorded per chamber, including its nucleus."""
 
-    max_dt: float = 0.006
-    """Largest time step; the explicit-Euler stability limit can make it smaller."""
-
     first_piece_radius_fraction: float = 0.70
     """Bilocular: radius of the first generating disc, as a fraction of central_radius."""
 
@@ -147,7 +144,6 @@ class ColonyParameters:
             self.interface_width,
             self.adhesion_range,
             self.aperture_radius,
-            self.max_dt,
             self.second_piece_radius_ratio,
             self.seed_separation_fraction,
             self.first_piece_radius_fraction,

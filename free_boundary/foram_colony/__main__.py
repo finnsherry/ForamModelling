@@ -41,6 +41,12 @@ def main():
     )
     parser.add_argument("--output", help="Output directory; None means output/<seed-mode>")
     parser.add_argument("--device", default="cpu", help="Torch device, e.g. cuda")
+    parser.add_argument(
+        "--animation",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="Write the growth animation (chamber_growth.gif)",
+    )
 
     docs = field_docs(ColonyParameters)
     for f in fields(ColonyParameters):
@@ -57,7 +63,7 @@ def main():
     output = args.output or Path("output") / p.seed_mode
     result = simulate_colony(p, device=args.device)
     metrics = save_colony(result, output)
-    render_colony(result, output)
+    render_colony(result, output, animation=args.animation)
     print(json.dumps(metrics, indent=2))
 
 

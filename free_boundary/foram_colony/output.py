@@ -47,13 +47,13 @@ def save_colony(result, output):
     return metrics
 
 
-def render_colony(result, output):
-    """Write the growth animation, seed figure and summary figure."""
+def render_colony(result, output, animation=True):
+    """Write the summary figure and, if `animation`, the growth animation."""
     import matplotlib
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
-    from matplotlib.colors import ListedColormap, BoundaryNorm
-    from matplotlib.animation import FuncAnimation, PillowWriter
+    from matplotlib.colors import BoundaryNorm, ListedColormap
+    from PIL import Image
 
     output = Path(output)
     output.mkdir(parents=True, exist_ok=True)
@@ -93,48 +93,47 @@ def render_colony(result, output):
         ax.set_aspect("equal")
         ax.spines[["top", "right"]].set_visible(False)
 
-    # Growth animation.
-    fig, ax = plt.subplots(figsize=(6.3, 6.0), layout="constrained")
-    setup(ax)
-    image = show(ax, frames[0]["labels"])
-    title = ax.set_title("")
-    ax.text(0.02, 0.02, "Fixed older chambers; illustrative growth", transform=ax.transAxes, fontsize=9)
+    if animation:
+        fig, ax = plt.subplots(figsize=(6.3, 6.0), layout="constrained")
+        setup(ax)
+        ax.set_axis_off()
+        image = show(ax, frames[0]["labels"])
+        # A two-line placeholder, so that the layout leaves room for the title.
+        # A fixed y stops matplotlib from moving the title while it is hidden.
+        title = ax.set_title("\n", y=1.0)
 
-    def update(j):
-        f = frames[j]
-        image.set_data(f["labels"])
-        stage = "seed" if j == 0 else f"chamber {f['chamber']}"
-        title.set_text(f"{seed_name} + successive chambers\n{stage}   t = {f['time']:.2f}")
-        return image, title
+        # Blitting: draw everything that stays the same once, then redraw only
+        # the image and the title for each frame.
+        fig.canvas.draw()
+        fig.set_layout_engine("none")
+        image.set_visible(False)
+        title.set_visible(False)
+        fig.canvas.draw()
+        background = fig.canvas.copy_from_bbox(fig.bbox)
+        image.set_visible(True)
+        title.set_visible(True)
 
-    # Hold the first and last frames for a second.
-    sequence = [0]*12 + list(range(len(frames))) + [len(frames) - 1]*12
-    anim = FuncAnimation(fig, update, frames=sequence, interval=100)
-    anim.save(output/"chamber_growth.gif", writer=PillowWriter(fps=12))
-    plt.close(fig)
+        pictures = []
+        for j, f in enumerate(frames):
+            image.set_data(f["labels"])
+            stage = "seed" if j == 0 else f"chamber {f['chamber']}"
+            title.set_text(f"{seed_name} + successive chambers\n{stage}   t = {f['time']:.2f}")
+            fig.canvas.restore_region(background)
+            ax.draw_artist(image)
+            ax.draw_artist(title)
+            picture = Image.fromarray(np.asarray(fig.canvas.buffer_rgba())).convert("RGB")
+            pictures.append(picture.quantize(method=Image.Quantize.FASTOCTREE))
+        plt.close(fig)
 
-    # Seed figure, zoomed to the seed.
-    fig, ax = plt.subplots(figsize=(5.0, 4.3), layout="constrained")
-    initial = frames[0]["labels"]
-    initial_where = np.argwhere(initial > 0)
-    seed_lo = coords[initial_where.min(axis=0)] - 0.10
-    seed_hi = coords[initial_where.max(axis=0)] + 0.10
-    show(ax, initial)
-    ax.set(xlim=(seed_lo[1], seed_hi[1]), ylim=(seed_lo[0], seed_hi[0]), xlabel="x", ylabel="y")
-    ax.set_aspect("equal")
-    for report in result["seed_reports"]:
-        ax.text(
-            *report["centroid"],
-            str(report["chamber"]),
-            ha="center",
-            va="center",
-            color="white",
-            weight="bold",
-            fontsize=15,
+        # 12 frames per second, with the first and last frames held for two seconds.
+        durations = [2000] + [1000 / 12] * (len(pictures) - 2) + [2000]
+        pictures[0].save(
+            output/"chamber_growth.gif",
+            save_all=True,
+            append_images=pictures[1:],
+            duration=durations,
+            loop=0,
         )
-    ax.set_title(seed_name)
-    fig.savefig(output/"seed.png", dpi=170)
-    plt.close(fig)
 
     # Summary figure: the final colony, and the area history of each new chamber.
     fig, (ax, graph) = plt.subplots(1, 2, figsize=(11, 5.4), layout="constrained")
@@ -164,5 +163,5 @@ def render_colony(result, output):
         ylabel="new chamber area",
         title="Targets (colour) and diffuse areas (dashes)",
     )
-    fig.savefig(output/"growth_summary.png", dpi=170)
+    fig.savefig(output/"growth_summary.png", dpi=150)
     plt.close(fig)

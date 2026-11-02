@@ -64,9 +64,9 @@ def laplacian(u, h):
     return (neighbours - 4*u) / h**2
 
 
-def stable_dt(h, diffusion, reaction_bound, max_dt):
+def stable_dt(h, diffusion, reaction_bound):
     """Explicit-Euler cap from the diffusion term and a bound on the reaction rate."""
-    return min(max_dt, DT_SAFETY / (4*diffusion/h**2 + reaction_bound))
+    return DT_SAFETY / (4 * diffusion / h**2 + reaction_bound)
 
 
 def corrected_phase_area(phase, desired, allowed, aperture, h):
@@ -93,32 +93,11 @@ def corrected_phase_area(phase, desired, allowed, aperture, h):
     return u, (target - u.sum()).abs() * h**2
 
 
-def area_tolerance(area):
-    """Largest acceptable projection residual: the sum is only accurate to about eps."""
-    return AREA_TOLERANCE_EPS * torch.finfo(DTYPE).eps * area
-
-
-def edge_value(u):
-    """Largest u next to the border of the array (the outermost ring itself is held at 0)."""
-    return torch.stack((
-        u[1, :].max(),
-        u[-2, :].max(),
-        u[:, 1].max(),
-        u[:, -2].max(),
-    )).max()
-
-
 def check_phase(u, edge, residual, area):
-    """Raise if the phase field went bad.
-
-    edge and residual are running maxima since the last check, kept on the
-    device; reading them together costs a single sync.
-    """
-    finite = torch.isfinite(u).all().to(u.dtype)
-    edge, residual, finite = torch.stack((edge, residual, finite)).tolist()
-    if not finite:
+    """Raise if the phase field went bad."""
+    if not torch.isfinite(u).all():
         raise RuntimeError("Nonfinite phase field.")
-    if residual > area_tolerance(area):
+    if residual > AREA_TOLERANCE_EPS * torch.finfo(DTYPE).eps * area:
         raise RuntimeError("Diffuse area correction failed; decrease the timestep.")
     if edge > WINDOW_SPILL:
         raise RuntimeError(
@@ -173,7 +152,14 @@ def integrate(
             t += dt
             steps += 1
             interval_error = torch.maximum(interval_error, residual)
-            edge = torch.maximum(edge, edge_value(u_w))
+            edge = torch.maximum(
+                edge, torch.stack((
+                    u_w[1, :].max(),
+                    u_w[-2, :].max(),
+                    u_w[:, 1].max(),
+                    u_w[:, -2].max(),
+                )).max()
+            )
 
         check_phase(u_w, edge, interval_error, target(t))
         u = window.paste(u_w)
