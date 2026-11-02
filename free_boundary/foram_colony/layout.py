@@ -1,5 +1,4 @@
 """Colony layout: the initial seed, and where each new chamber attaches."""
-from __future__ import annotations
 
 import math
 from dataclasses import dataclass
@@ -43,15 +42,25 @@ def make_seed(p, x, y):
         second = torch.hypot(x - c2[0], y - c2[1]) <= r2
         labels[first] = 1
         labels[second & ~first] = 2
+
     reports = []
     for cell, name in enumerate(SEED_STYLES[p.seed_mode]["names"], start=1):
         mask = labels == cell
         if int(mask.sum()) < MIN_SEED_PIXELS or not is_connected(mask):
-            raise ValueError("An initial compartment is missing, disconnected or under-resolved. Refine the grid or adjust seed geometry.")
-        reports.append({"chamber":cell,"name":name,"pixel_area":float(mask.sum())*p.spacing**2,
-                        "centroid":[float(x[mask].mean()),float(y[mask].mean())]})
+            raise ValueError(
+                "An initial compartment is missing, disconnected or under-resolved. "
+                "Refine the grid or adjust seed geometry."
+            )
+        reports.append({
+            "chamber": cell,
+            "name": name,
+            "pixel_area": float(mask.sum()) * p.spacing**2,
+            "centroid": [float(x[mask].mean()), float(y[mask].mean())],
+        })
     if not is_connected(labels > 0):
-        raise ValueError("The central seed pieces do not connect; adjust their separation or grid spacing.")
+        raise ValueError(
+            "The central seed pieces do not connect; adjust their separation or grid spacing."
+        )
     return labels, reports
 
 
@@ -64,11 +73,13 @@ def select_aperture(labels, parent, x, y, angle, guide_radius, radius):
     rows, columns = torch.nonzero(candidates, as_tuple=True)
     if len(rows) == 0:
         raise RuntimeError("The previous chamber has no exposed boundary.")
+
     theta = math.radians(angle)
     guide = (guide_radius * math.cos(theta), guide_radius * math.sin(theta))
     scores = (x[rows, columns] - guide[0])**2 + (y[rows, columns] - guide[1])**2
     selected = int(torch.argmin(scores))
     cy, cx = int(rows[selected]), int(columns[selected])
+
     distance = torch.hypot(x - x[cy, cx], y - y[cy, cx])
     aperture = candidates & (distance <= radius)
     # The outside pixel layer of a curved wall can be diagonally connected.
@@ -81,10 +92,13 @@ def place_chamber(labels, index, seed_chambers, x, y, p):
     allowed = labels == 0
     allowed[[0, -1], :] = False   # keep the outer ring empty
     allowed[:, [0, -1]] = False
-    aperture, anchor = select_aperture(labels, parent, x, y,
-        index*p.turning_angle_degrees + p.seed_orientation_degrees,
-        p.guide_start_radius + index*p.guide_radius_increment, p.aperture_radius)
-    if bool((aperture & ~allowed).any()):
-        raise RuntimeError("Selected aperture intersects the computational boundary.")
+    aperture, anchor = select_aperture(
+        labels,
+        parent,
+        x,
+        y,
+        angle=index*p.turning_angle_degrees + p.seed_orientation_degrees,
+        guide_radius=p.guide_start_radius + index*p.guide_radius_increment,
+        radius=p.aperture_radius,
+    )
     return Chamber(cell, parent, allowed, aperture, anchor)
-

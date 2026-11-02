@@ -9,7 +9,6 @@ subject to h^2 sum(u) = target_area(t). gamma is p.curvature_coefficient and
 ell is p.interface_width. The Laplacian, the area constraint and the time
 stepping are in solver.py; this module supplies the model-specific pieces.
 """
-from __future__ import annotations
 
 import math
 
@@ -20,20 +19,24 @@ from .parameters import ADHESION_CUTOFF_RANGES
 
 
 def target_area(initial_area, final_area, p):
-    """Prescribed chamber area over time: a sigmoid from initial_area at t = 0 to final_area at p.formation_time.
+    """Prescribed chamber area over time.
+
+    A sigmoid from initial_area at t = 0 to final_area at p.formation_time.
 
     Illustrative, NOT a fit to foraminiferal observations.
     """
-    if final_area <= initial_area:
-        raise ValueError("Final area must exceed the seed area.")
     end_time = p.formation_time
     rate, midpoint = p.growth_rate, p.growth_midpoint_fraction * end_time
+
     def sigmoid(t):
         return 1.0 / (1.0 + math.exp(-rate * (t - midpoint)))
+
     f0, f1 = sigmoid(0.0), sigmoid(end_time)
     scale = (final_area - initial_area) / (f1 - f0)
+
     def area(t):
         return initial_area + scale * (sigmoid(t) - f0)
+
     return area
 
 
@@ -45,6 +48,7 @@ def nucleate(labels, chamber, x, y, p):
     outward = anchor - center
     outward /= max(float(torch.linalg.norm(outward)), 1e-12)
     blob_center = anchor + p.nucleus_offset*outward
+
     distance = torch.hypot(x - blob_center[0], y - blob_center[1])
     u = (1 / (1 + torch.exp((distance - p.nucleus_radius) / p.interface_width))) * chamber.allowed
     # Compact support prevents phase nucleation far from the seeded chamber.

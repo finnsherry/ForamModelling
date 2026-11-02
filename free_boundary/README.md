@@ -21,7 +21,9 @@ python -m foram_colony --seed-mode bilocular    # writes output/bilocular/
 python -m foram_colony --seed-mode unilocular   # writes output/unilocular/
 ```
 
-Results go to `output/<seed-mode>/` unless `--output` is given.
+Results go to `output/<seed-mode>/` unless `--output` is given. Every field of
+`ColonyParameters` is a command-line option (`--new-chambers`,
+`--adhesion-strength`, ...); `python -m foram_colony --help` lists them all.
 
 Or open `Foraminiferal_Chamber_Growth.ipynb` and run its cells. The notebook
 imports the `foram_colony` package from the same folder. A default run takes a few
@@ -127,8 +129,8 @@ parameters = ColonyParameters(
 ```
 
 ```bash
-python -m foram_colony --seed-mode bilocular --second-radius-ratio 0.85 \
-  --seed-separation 0.60 --seed-angle 30 --output output/rotated_pair
+python -m foram_colony --seed-mode bilocular --second-piece-radius-ratio 0.85 \
+  --seed-separation-fraction 0.60 --seed-orientation-degrees 30 --output output/rotated_pair
 ```
 
 ### Unilocular seed
@@ -157,8 +159,8 @@ origin.
 ## Parameters
 
 ```bash
-python -m foram_colony --chambers 6 --adhesion 1.0 --turn-angle 65
-python -m foram_colony --adhesion 0.0 --output output/no_adhesion
+python -m foram_colony --new-chambers 6 --adhesion-strength 1.0 --turning-angle-degrees 65
+python -m foram_colony --adhesion-strength 0.0 --output output/no_adhesion
 python -m foram_colony --spacing 0.02 --output output/finer_grid
 ```
 
@@ -196,12 +198,11 @@ time-stepping window) are constants at the top of `parameters.py`.
 ## Specified final chamber sizes
 
 ```bash
-python -m foram_colony --chambers 3 --areas 0.30 0.39 0.48
+python -m foram_colony --new-chambers 3 --chamber-areas 0.30 0.39 0.48
 ```
 
 ```python
-result = simulate_colony(ColonyParameters(new_chambers=3),
-                         chamber_areas=[0.30, 0.39, 0.48])
+result = simulate_colony(ColonyParameters(new_chambers=3, chamber_areas=(0.30, 0.39, 0.48)))
 ```
 
 These are the areas of the NEW chambers only. Each must be larger than its
@@ -243,8 +244,8 @@ fixed while the current chamber grows. A compactly supported initial seed
 prevents spontaneous nucleation far away. Time stepping is explicit, with a
 timestep cap set by the diffusive and reaction stability limits.
 Each step is computed only on a window around the growing chamber, refitted at
-every snapshot. If the chamber reaches the window border, the window is widened
-and the interval repeated, so the result is the same as on the full grid.
+every snapshot, with a margin wide enough that u stays negligible at its
+border. If u does reach the border, the run stops with an error.
 
 When a chamber is frozen, it takes the pixels with the highest phase values,
 up to the nearest achievable pixel area (aperture included). Thus:
@@ -253,7 +254,7 @@ up to the nearest achievable pixel area (aperture included). Thus:
 - the frozen/displayed area differs from the requested value by at most
   spacing^2/2 (0.0003125 on the default grid);
 - every frozen chamber is checked for 4-neighbour connectedness;
-- each frozen chamber is checked for contact with its parent;
+- each frozen chamber touches its parent by construction, as it contains the aperture;
 - older labels are immobile by construction: a new chamber can only claim
   pixels outside every existing chamber.
 

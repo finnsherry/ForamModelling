@@ -1,5 +1,4 @@
 """Binary morphology on torch masks: dilation, connectivity and a truncated distance transform."""
-from __future__ import annotations
 
 import math
 from typing import Literal
@@ -32,37 +31,33 @@ def dilate(mask, kernel: Literal["cross", "square"]="cross"):
     return rows | columns
 
 
-def _flood(mask, region, kernel, stop_at=None):
-    """Grow region by dilation inside mask until it stops growing, or reaches stop_at pixels."""
+def component_containing(mask, index, kernel: Literal["cross", "square"]="cross"):
+    """The connected part of mask that contains pixel `index`, by flood fill.
+
+    Grows the region by dilation inside mask until it stops growing. The region
+    only grows, so comparing pixel counts detects that; counting only every
+    FLOOD_CHECK_EVERY dilations saves device syncs, and the extra dilations after
+    convergence change nothing.
+    """
+    region = torch.zeros_like(mask)
+    region[index] = mask[index]
     count = int(region.sum())
     while True:
         for _ in range(FLOOD_CHECK_EVERY):
             region = dilate(region, kernel) & mask
         grown = int(region.sum())
-        if grown == count or grown == stop_at:
+        if grown == count:
             return region
         count = grown
 
 
-def component_containing(mask, index, kernel: Literal["cross", "square"]="cross"):
-    """The connected part of mask that contains pixel `index`, by flood fill.
-
-    The number of dilations is about the region's diameter in pixels.
-    """
-    region = torch.zeros_like(mask)
-    region[index] = mask[index]
-    return _flood(mask, region, kernel)
-
-
 def is_connected(mask, kernel: Literal["cross", "square"]="cross"):
     """True if mask is a single nonempty connected component."""
-    total = int(mask.sum())
-    if total == 0:
+    pixels = torch.nonzero(mask)
+    if len(pixels) == 0:
         return False
-    region = torch.zeros(mask.shape, dtype=torch.bool, device=mask.device)
-    region.view(-1)[int(mask.reshape(-1).to(torch.uint8).argmax())] = True
-    # Stop as soon as the fill covers the whole mask: then it is connected.
-    return int(_flood(mask, region, kernel, stop_at=total).sum()) == total
+    first = tuple(pixels[0].tolist())
+    return int(component_containing(mask, first, kernel).sum()) == len(pixels)
 
 
 def distance_to(mask, h, max_distance):
@@ -72,7 +67,8 @@ def distance_to(mask, h, max_distance):
     for dim in (0, 1):
         n = d2.shape[dim]
         padded = F.pad(d2, (0, 0, R, R) if dim == 0 else (R, R), value=math.inf)
-        d2 = torch.stack([padded.narrow(dim, R + k, n) + k**2 for k in range(-R, R + 1)]).amin(0)
+        shifted = [padded.narrow(dim, R + k, n) + k**2 for k in range(-R, R + 1)]
+        d2 = torch.stack(shifted).amin(0)
     distance = d2.sqrt() * h
     # Beyond R the square window may have missed a nearer pixel; values there are not exact.
     distance[distance > max_distance] = math.inf
