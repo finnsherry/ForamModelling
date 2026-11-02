@@ -7,6 +7,7 @@ recorded for output is converted to numpy.
 import math
 from dataclasses import dataclass, field
 
+import numpy as np
 import torch
 
 from .layout import make_seed, place_chamber
@@ -79,7 +80,7 @@ def grow(labels, chamber, final_area, start_time, x, y, p, record):
         chamber.allowed,
         chamber.aperture,
         diffusion=p.curvature_coefficient,
-        reaction=lambda u, window: reaction(u, window.crop(adhesion), p),
+        reaction=lambda u, window: reaction(u, adhesion[window], p),
         target=target,
         save_times=[p.formation_time * i / n for i in range(1, n + 1)],
         dt_max=stable_dt(h, p.curvature_coefficient, reaction_rate_bound(p)),
@@ -103,7 +104,7 @@ def freeze(labels, chamber, u, final_area, steps, x, y, p, record):
         )
 
     # Includes the parent: the mask contains the aperture, which lies against it.
-    contacts = sorted(int(v) for v in torch.unique(labels[dilate(mask) & occupied]) if v > 0)
+    contacts = torch.unique(labels[dilate(mask) & occupied]).tolist()
     labels[mask] = chamber.cell
 
     frozen_area = h**2*int(mask.sum())
@@ -151,7 +152,7 @@ def simulate_colony(parameters=None, device="cpu"):
         "coordinates": x[0].cpu().numpy(),
         "frames": record.frames,
         "labels": labels.cpu().numpy(),
-        "history": torch.tensor(record.history, dtype=DTYPE).numpy(),
+        "history": np.array(record.history),
         "reports": record.reports,
         "seed_reports": seed_reports,
         "max_diffuse_area_error_all_steps": record.max_diffuse_error,

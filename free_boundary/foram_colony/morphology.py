@@ -51,24 +51,26 @@ def component_containing(mask, index, kernel: Literal["cross", "square"]="cross"
         count = grown
 
 
-def is_connected(mask, kernel: Literal["cross", "square"]="cross"):
+def is_connected(mask):
     """True if mask is a single nonempty connected component."""
     pixels = torch.nonzero(mask)
     if len(pixels) == 0:
         return False
     first = tuple(pixels[0].tolist())
-    return int(component_containing(mask, first, kernel).sum()) == len(pixels)
+    return int(component_containing(mask, first).sum()) == len(pixels)
 
 
 def distance_to(mask, h, max_distance):
     """Euclidean distance from every pixel to the nearest True pixel of mask, up to max_distance."""
     R = math.ceil(max_distance / h)
     d2 = torch.full(mask.shape, math.inf, dtype=DTYPE, device=mask.device).masked_fill(mask, 0.0)
+    # Separable: the squared distance along the rows, then along the columns.
     for dim in (0, 1):
         n = d2.shape[dim]
         padded = F.pad(d2, (0, 0, R, R) if dim == 0 else (R, R), value=math.inf)
-        shifted = [padded.narrow(dim, R + k, n) + k**2 for k in range(-R, R + 1)]
-        d2 = torch.stack(shifted).amin(0)
+        for k in range(1, R + 1):
+            torch.minimum(d2, padded.narrow(dim, R + k, n) + k**2, out=d2)
+            torch.minimum(d2, padded.narrow(dim, R - k, n) + k**2, out=d2)
     distance = d2.sqrt() * h
     # Beyond R the square window may have missed a nearer pixel; values there are not exact.
     distance[distance > max_distance] = math.inf

@@ -13,6 +13,7 @@ stepping are in solver.py; this module supplies the model-specific pieces.
 import math
 
 import torch
+import torch.nn.functional as F
 
 from .morphology import distance_to
 from .parameters import ADHESION_CUTOFF_RANGES
@@ -43,8 +44,7 @@ def nucleate(labels, chamber, x, y, p):
     parent = labels == chamber.parent
     center = torch.stack((x[parent].mean(), y[parent].mean()))
     anchor = torch.stack((x[chamber.anchor], y[chamber.anchor]))
-    outward = anchor - center
-    outward /= max(float(torch.linalg.norm(outward)), 1e-12)
+    outward = F.normalize(anchor - center, dim=0)
     blob_center = anchor + p.nucleus_offset*outward
 
     distance = torch.hypot(x - blob_center[0], y - blob_center[1])
@@ -70,7 +70,7 @@ def double_well_coefficient(p):
 
 def reaction(u, adhesion, p):
     """The non-diffusive part of du/dt: the double well plus adhesion."""
-    return double_well_coefficient(p) * u * (1 - u) * (u - 0.5) + adhesion * u * (1 - u)
+    return u * (1 - u) * (double_well_coefficient(p) * (u - 0.5) + adhesion)
 
 
 def reaction_rate_bound(p):

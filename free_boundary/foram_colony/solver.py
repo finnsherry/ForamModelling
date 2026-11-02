@@ -6,8 +6,6 @@ each followed by a projection onto a prescribed area. u is held at 0 outside
 supplied by the caller.
 """
 
-from dataclasses import dataclass
-
 import torch
 
 from .parameters import (
@@ -20,48 +18,30 @@ from .parameters import (
 )
 
 
-@dataclass(frozen=True)
-class Window:
-    """A rectangle [r0, r1) x [c0, c1) of a grid of size `shape`."""
-    r0: int
-    r1: int
-    c0: int
-    c1: int
-    shape: tuple[int, int]
+def window_around(mask, margin):
+    """Bounding box of mask (nonempty) as a pair of slices, widened by margin pixels.
 
-    @classmethod
-    def around(cls, mask, margin):
-        """Bounding box of mask (nonempty), widened by margin pixels and clipped to the grid."""
-        rows = torch.nonzero(mask.any(1)).squeeze(1)
-        cols = torch.nonzero(mask.any(0)).squeeze(1)
-        n, m = mask.shape
-        return cls(
-            r0=max(int(rows[0]) - margin, 0),
-            r1=min(int(rows[-1]) + margin + 1, n),
-            c0=max(int(cols[0]) - margin, 0),
-            c1=min(int(cols[-1]) + margin + 1, m),
-            shape=(n, m),
-        )
-
-    def crop(self, a):
-        return a[self.r0:self.r1, self.c0:self.c1]
-
-    def paste(self, a):
-        """a placed into a zero array of the full grid size."""
-        full = a.new_zeros(self.shape)
-        full[self.r0:self.r1, self.c0:self.c1] = a
-        return full
+    Slices clip at the grid end themselves; only the start needs clipping at 0.
+    """
+    rows = torch.nonzero(mask.any(1)).squeeze(1)
+    cols = torch.nonzero(mask.any(0)).squeeze(1)
+    return (
+        slice(max(int(rows[0]) - margin, 0), int(rows[-1]) + margin + 1),
+        slice(max(int(cols[0]) - margin, 0), int(cols[-1]) + margin + 1),
+    )
 
 
 def laplacian(u, h):
-    """Five-point Laplacian; periodic, which is harmless as u is 0 on the outer ring."""
-    neighbours = (
-        torch.roll(u, 1, 0)
-        + torch.roll(u, -1, 0)
-        + torch.roll(u, 1, 1)
-        + torch.roll(u, -1, 1)
+    """Five-point Laplacian on the interior; zero on the outer ring, where u is held at 0."""
+    out = torch.zeros_like(u)
+    out[1:-1, 1:-1] = (
+        u[:-2, 1:-1]
+        + u[2:, 1:-1]
+        + u[1:-1, :-2]
+        + u[1:-1, 2:]
+        - 4*u[1:-1, 1:-1]
     )
-    return (neighbours - 4*u) / h**2
+    return out / h**2
 
 
 def stable_dt(h, diffusion, reaction_bound):
@@ -86,7 +66,8 @@ def corrected_phase_area(phase, desired, allowed, aperture, h):
     lam = torch.zeros((), dtype=u0.dtype, device=u0.device)
     for _ in range(NEWTON_STEPS):
         error = target - u.sum()
-        slope = torch.where(error > 0, (w * (u < 1)).sum(), (w * (u > 0)).sum())
+        # Only pixels that can still move in the direction of the step count.
+        slope = (w * torch.where(error > 0, u < 1, u > 0)).sum()
         # A vanishing slope gives a huge step; the residual check then reports it.
         lam = lam + error / slope.clamp_min(1e-12)
         u = (u0 + lam * w).clamp(0.0, 1.0)
@@ -121,8 +102,8 @@ def integrate(
 ):
     """Evolve u through save_times; returns the final u, the step count and the largest area error.
 
-    reaction(u, window) gives the reaction term on the current window; target(t)
-    the prescribed area. on_snapshot(u, t) is called at t = 0 and at every save time.
+    reaction(u, window) gives the reaction term on the current window, a pair of
+    slices; target(t) the prescribed area. on_snapshot(u, t) is called at t = 0 and at every save time.
 
     The time stepping runs on a window around the region where u > WINDOW_TAIL,
     widened by `margin` pixels and refitted at every save time. The window's
@@ -134,12 +115,16 @@ def integrate(
     on_snapshot(u, t)
 
     for save_time in save_times:
-        window = Window.around(u > WINDOW_TAIL, margin)
-        allowed_w = window.crop(allowed).clone()
+        window = window_around(u > WINDOW_TAIL, margin)
+        allowed_w = allowed[window].clone()
         allowed_w[[0, -1], :] = False
         allowed_w[:, [0, -1]] = False
-        aperture_w = window.crop(aperture)
-        u_w = window.crop(u) * allowed_w
+        aperture_w = aperture[window]
+        u_w = u[window] * allowed_w
+        # The pixels just inside the window's outer ring.
+        edge_ring = torch.zeros_like(u_w)
+        edge_ring[[1, -2], 1:-1] = 1.0
+        edge_ring[1:-1, [1, -2]] = 1.0
 
         # Nothing in this loop reads back from the device; problems are only
         # checked at the save time, from running maxima kept on the device.
@@ -152,17 +137,11 @@ def integrate(
             t += dt
             steps += 1
             interval_error = torch.maximum(interval_error, residual)
-            edge = torch.maximum(
-                edge, torch.stack((
-                    u_w[1, :].max(),
-                    u_w[-2, :].max(),
-                    u_w[:, 1].max(),
-                    u_w[:, -2].max(),
-                )).max()
-            )
+            edge = torch.maximum(edge, (u_w * edge_ring).amax())
 
         check_phase(u_w, edge, interval_error, target(t))
-        u = window.paste(u_w)
+        u = torch.zeros_like(u)
+        u[window] = u_w
         max_error = torch.maximum(max_error, interval_error)
         on_snapshot(u, t)
 

@@ -64,12 +64,9 @@ def make_seed(p, x, y):
     return labels, reports
 
 
-def select_aperture(labels, parent, x, y, angle, guide_radius, radius):
-    """Choose an exposed parent wall nearest the guide point at (guide_radius, angle)."""
-    parent_mask = labels == parent
-    candidates = dilate(parent_mask) & (labels == 0)
-    candidates[[0, -1], :] = False
-    candidates[:, [0, -1]] = False
+def select_aperture(labels, parent, allowed, x, y, angle, guide_radius, radius):
+    """Choose an exposed, allowed parent wall nearest the guide point at (guide_radius, angle)."""
+    candidates = dilate(labels == parent) & allowed
     rows, columns = torch.nonzero(candidates, as_tuple=True)
     if len(rows) == 0:
         raise RuntimeError("The previous chamber has no exposed boundary.")
@@ -95,6 +92,7 @@ def place_chamber(labels, index, seed_chambers, x, y, p):
     aperture, anchor = select_aperture(
         labels,
         parent,
+        allowed,
         x,
         y,
         angle=index*p.turning_angle_degrees + p.seed_orientation_degrees,
