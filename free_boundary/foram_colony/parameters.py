@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass
 from typing import Literal
 
@@ -77,9 +78,28 @@ class ColonyParameters:
     growth_rate: float = 0.65
     growth_midpoint_fraction: float = 0.48
 
+    def __post_init__(self):
+        if self.seed_mode not in SEED_STYLES:
+            raise ValueError(f"seed_mode must be one of {sorted(SEED_STYLES)}.")
+        positive = [self.central_radius, self.spacing, self.half_width, self.first_chamber_area,
+                    self.chamber_area_ratio, self.formation_time, self.curvature_coefficient,
+                    self.interface_width, self.adhesion_range, self.aperture_radius, self.max_dt,
+                    self.second_piece_radius_ratio, self.seed_separation_fraction,
+                    self.first_piece_radius_fraction, self.guide_start_radius, self.nucleus_radius,
+                    self.nucleus_support_radius, self.growth_rate]
+        if not all(math.isfinite(v) and v > 0 for v in positive):
+            raise ValueError("Geometric, area and numerical scales must be positive and finite.")
+        nonnegative = [self.guide_radius_increment, self.nucleus_offset, self.growth_midpoint_fraction]
+        if not all(math.isfinite(v) and v >= 0 for v in nonnegative):
+            raise ValueError("Guide increment, nucleus offset and growth midpoint must be nonnegative and finite.")
+        if self.new_chambers < 1 or self.snapshots_per_chamber < 2 or self.adhesion_strength < 0:
+            raise ValueError("Invalid chamber count, snapshot count or adhesion strength.")
+        if self.seed_mode == "bilocular" and self.seed_separation_fraction >= 1:
+            raise ValueError("Bilocular generating discs must overlap: seed_separation_fraction < 1.")
+
 
 # Everything that differs between the seed modes, apart from the geometry
-# constructed in placement.make_seed.
+# constructed in layout.make_seed.
 SEED_STYLES = {
     "unilocular": {
         "names": ["Initial chamber (proloculus)"],

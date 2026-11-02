@@ -1,11 +1,18 @@
-"""Phase-field numerics: no foraminiferal concepts, only u, masks and the grid spacing."""
+"""Time integration of an area-constrained phase field. Model-free: no foraminiferal concepts.
+
+Solves u_t = diffusion * Laplacian(u) + reaction(u) by explicit Euler steps,
+each followed by a projection onto a prescribed area. u is held at 0 outside
+`allowed` and at 1 on `aperture`. The reaction term and the target area are
+supplied by the caller.
+"""
 from __future__ import annotations
 
 from dataclasses import dataclass
 
 import torch
 
-from .parameters import AREA_TOLERANCE_EPS, DT_SAFETY, DTYPE, NEWTON_STEPS
+from .parameters import (AREA_TOLERANCE_EPS, DT_SAFETY, DTYPE, EDGE_THRESHOLD, NEWTON_STEPS,
+                         WINDOW_SPILL, WINDOW_TAIL)
 
 
 @dataclass(frozen=True)
@@ -48,22 +55,14 @@ class Window:
         return full
 
 
-def double_well_coefficient(p):
-    return 2 * p.curvature_coefficient / p.interface_width**2
+def laplacian(u, h):
+    """Five-point Laplacian; periodic, which is harmless as u is 0 on the outer ring."""
+    return (torch.roll(u, 1, 0) + torch.roll(u, -1, 0) + torch.roll(u, 1, 1) + torch.roll(u, -1, 1) - 4*u) / h**2
 
 
-def stable_dt(p):
-    """Explicit-Euler cap from the diffusion, double-well and adhesion terms."""
-    k = double_well_coefficient(p)
-    return min(p.max_dt, DT_SAFETY / (4*p.curvature_coefficient/p.spacing**2 + 3*k + p.adhesion_strength))
-
-
-def phase_rhs(u, adhesion, p):
-    """Allen–Cahn plus adhesion: du/dt before the area projection."""
-    h = p.spacing
-    lap = (torch.roll(u, 1, 0) + torch.roll(u, -1, 0) + torch.roll(u, 1, 1) + torch.roll(u, -1, 1) - 4*u) / h**2
-    return (p.curvature_coefficient*lap + double_well_coefficient(p)*u*(1-u)*(u-0.5)
-            + adhesion*u*(1-u))
+def stable_dt(h, diffusion, reaction_bound, max_dt):
+    """Explicit-Euler cap from the diffusion term and a bound on the reaction rate."""
+    return min(max_dt, DT_SAFETY / (4*diffusion/h**2 + reaction_bound))
 
 
 def corrected_phase_area(phase, desired, allowed, aperture, h):
@@ -117,14 +116,55 @@ def check_phase(u, edges, residual, area):
     return edges
 
 
-def crisp_chamber(phase, allowed, aperture, area, h):
-    """Threshold to the nearest pixel-area target while retaining the aperture."""
-    count = round(area / h**2)
-    candidates = torch.nonzero((allowed & ~aperture).flatten()).squeeze(1)
-    needed = count - int(aperture.sum())
-    if needed <= 0 or needed > len(candidates):
-        raise ValueError("Target area incompatible with aperture or remaining space.")
-    chosen = candidates[torch.topk(phase.flatten()[candidates], needed).indices]
-    mask = aperture.clone()
-    mask.view(-1)[chosen] = True
-    return mask
+def integrate(u, allowed, aperture, diffusion, reaction, target, save_times, dt_max, h, margin, on_snapshot):
+    """Evolve u through save_times; returns the final u, the step count and the largest area error.
+
+    reaction(u, window) gives the reaction term on the current window; target(t)
+    the prescribed area. on_snapshot(u, t) is called at t = 0 and at every save time.
+
+    The time stepping runs on a window around the region where u > 0, not the
+    whole grid. The window's outer ring is held at u = 0, like the grid's, so the
+    step works on it unchanged. At every save time the window is refitted. If u
+    reached a side of the window during an interval, the window was too small:
+    that side is widened by `margin` pixels and the interval is repeated. A side
+    that lies on the grid border cannot be widened; there the usual edge check
+    applies instead.
+    """
+    t, steps = 0.0, 0
+    max_error = torch.zeros((), device=u.device, dtype=DTYPE)
+    on_snapshot(u, t)
+    window = Window.around(u > WINDOW_TAIL, margin)
+    u_full = u
+    for save_time in save_times:
+        t_start, steps_start = t, steps
+        while True:
+            allowed_w = window.crop(allowed).clone()
+            allowed_w[[0, -1], :] = False
+            allowed_w[:, [0, -1]] = False
+            aperture_w = window.crop(aperture)
+            u = window.crop(u_full) * allowed_w
+            # Nothing in this loop reads back from the device; problems are only
+            # checked at the save time, from running maxima kept on the device.
+            interval_error = torch.zeros((), device=u.device, dtype=DTYPE)
+            edges = torch.zeros(4, device=u.device, dtype=DTYPE)
+            while t < save_time - 1e-12:
+                dt = min(dt_max, save_time - t)
+                rhs = diffusion*laplacian(u, h) + reaction(u, window)
+                u, residual = corrected_phase_area(u + dt*rhs, target(t + dt), allowed_w, aperture_w, h)
+                t += dt
+                steps += 1
+                interval_error = torch.maximum(interval_error, residual)
+                edges = torch.maximum(edges, edge_values(u))
+            edges = check_phase(u, edges, interval_error, target(t))
+            if any(e > EDGE_THRESHOLD and border for e, border in zip(edges, window.at_border)):
+                raise RuntimeError("Growth reached the computational edge; increase half_width.")
+            spilled = [e > WINDOW_SPILL and not border for e, border in zip(edges, window.at_border)]
+            if not any(spilled):
+                break
+            window = window.widened(margin, spilled)
+            t, steps = t_start, steps_start
+        u_full = window.paste(u)
+        max_error = torch.maximum(max_error, interval_error)
+        on_snapshot(u_full, t)
+        window = Window.around(u_full > WINDOW_TAIL, margin)
+    return u_full, steps, float(max_error)

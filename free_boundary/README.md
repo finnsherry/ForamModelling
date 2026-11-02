@@ -61,15 +61,16 @@ dominates and the CPU is nearly as fast.
 
 The `foram_colony/` package:
 
-- `parameters.py`: `ColonyParameters` and the per-seed-mode labels and colours.
-- `morphology.py`: binary dilation (boolean shifts), connectivity by flood fill, and a
-  truncated min-plus distance transform, all on torch masks.
-- `phase_field.py`: pure numerics, i.e. the Allen–Cahn step, the area projection,
-  crisping a phase field to pixels, and the stable timestep.
-- `placement.py`: the model rules, i.e. seed geometry, aperture choice,
-  nucleation of each new chamber, and the adhesion field.
-- `colony.py`: the growth law and the driver. For each new chamber it runs
-  place → grow → freeze.
+- `parameters.py`: `ColonyParameters` (validated when created), the numerical
+  constants, and the per-seed-mode labels and colours.
+- `layout.py`: the initial seed, and where each new chamber attaches.
+- `growth.py`: how one chamber grows, i.e. the reaction term (double well plus
+  adhesion), the adhesion field, the nucleus and the target-area curve.
+- `solver.py`: model-free time integration: Laplacian, explicit steps, the
+  area projection and the time-stepping window.
+- `morphology.py`: binary dilation (boolean shifts), connectivity by flood
+  fill, and a truncated min-plus distance transform, all on torch masks.
+- `colony.py`: the driver. For each new chamber it runs place → grow → freeze.
 - `output.py`: `save_colony` and `render_colony`.
 - `__main__.py`: the command line.
 

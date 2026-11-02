@@ -1,4 +1,4 @@
-"""Growth law and the simulation driver: for each new chamber, place → grow → freeze.
+"""The simulation driver: grows the colony chamber by chamber, place → grow → freeze.
 
 Everything runs as torch tensors on `device`, in parameters.DTYPE. Results are
 converted to numpy only at the end, for output.
@@ -10,12 +10,11 @@ from dataclasses import dataclass, field
 
 import torch
 
+from .layout import make_seed, place_chamber
+from .growth import adhesion_field, nucleate, reaction, reaction_rate_bound, target_area
 from .morphology import dilate, is_connected
-from .parameters import (DTYPE, EDGE_THRESHOLD, WINDOW_MARGIN, WINDOW_SPILL, WINDOW_TAIL,
-                         ColonyParameters, SEED_STYLES)
-from .phase_field import (Window, check_phase, corrected_phase_area, crisp_chamber, edge_values,
-                          phase_rhs, stable_dt)
-from .placement import adhesion_field, make_seed, nucleate, place_chamber
+from .parameters import DTYPE, WINDOW_MARGIN, ColonyParameters
+from .solver import integrate, stable_dt
 
 
 @dataclass
@@ -27,49 +26,27 @@ class Record:
     max_diffuse_error: float = 0.0
 
 
-def demo_growth(initial_area, final_area, p):
-    """Illustrative normalized sigmoid over p.formation_time, NOT a fit to foraminiferal observations."""
-    if final_area <= initial_area:
-        raise ValueError("Final area must exceed the seed area.")
-    end_time = p.formation_time
-    rate, midpoint = p.growth_rate, p.growth_midpoint_fraction * end_time
-    def sigmoid(t):
-        return 1.0 / (1.0 + math.exp(-rate * (t - midpoint)))
-    f0, f1 = sigmoid(0.0), sigmoid(end_time)
-    scale = (final_area - initial_area) / (f1 - f0)
-    def area(t):
-        return initial_area + scale * (sigmoid(t) - f0)
-    def rate_of_area(t):
-        f = sigmoid(t)
-        return scale * rate * f * (1.0 - f)
-    return area, rate_of_area
-
-
-def validate(p, chamber_areas):
-    """Check parameters; return the target area of each new chamber."""
-    if p.seed_mode not in SEED_STYLES:
-        raise ValueError(f"seed_mode must be one of {sorted(SEED_STYLES)}.")
-    positive = [p.central_radius, p.spacing, p.half_width, p.first_chamber_area,
-                p.chamber_area_ratio, p.formation_time, p.curvature_coefficient,
-                p.interface_width, p.adhesion_range, p.aperture_radius, p.max_dt,
-                p.second_piece_radius_ratio, p.seed_separation_fraction,
-                p.first_piece_radius_fraction, p.guide_start_radius, p.nucleus_radius,
-                p.nucleus_support_radius, p.growth_rate]
-    if not all(math.isfinite(v) and v > 0 for v in positive):
-        raise ValueError("Geometric, area and numerical scales must be positive and finite.")
-    nonnegative = [p.guide_radius_increment, p.nucleus_offset, p.growth_midpoint_fraction]
-    if not all(math.isfinite(v) and v >= 0 for v in nonnegative):
-        raise ValueError("Guide increment, nucleus offset and growth midpoint must be nonnegative and finite.")
-    if p.new_chambers < 1 or p.snapshots_per_chamber < 2 or p.adhesion_strength < 0:
-        raise ValueError("Invalid chamber count, snapshot count or adhesion strength.")
-    if p.seed_mode == "bilocular" and p.seed_separation_fraction >= 1:
-        raise ValueError("Bilocular generating discs must overlap: seed_separation_fraction < 1.")
+def chamber_targets(p, chamber_areas):
+    """Final area of each new chamber: the supplied ones, or the geometric series from p."""
     if chamber_areas is None:
         chamber_areas = [p.first_chamber_area * p.chamber_area_ratio**i for i in range(p.new_chambers)]
     chamber_areas = [float(a) for a in chamber_areas]
     if len(chamber_areas) != p.new_chambers or not all(math.isfinite(a) and a > 0 for a in chamber_areas):
         raise ValueError("Supply one finite positive target area per new chamber.")
     return chamber_areas
+
+
+def crisp_chamber(phase, allowed, aperture, area, h):
+    """Threshold to the nearest pixel-area target while retaining the aperture."""
+    count = round(area / h**2)
+    candidates = torch.nonzero((allowed & ~aperture).flatten()).squeeze(1)
+    needed = count - int(aperture.sum())
+    if needed <= 0 or needed > len(candidates):
+        raise ValueError("Target area incompatible with aperture or remaining space.")
+    chosen = candidates[torch.topk(phase.flatten()[candidates], needed).indices]
+    mask = aperture.clone()
+    mask.view(-1)[chosen] = True
+    return mask
 
 
 def snapshot(record, labels, chamber, u, t, target, start_time, h):
@@ -83,64 +60,30 @@ def snapshot(record, labels, chamber, u, t, target, start_time, h):
 
 
 def grow(labels, chamber, final_area, start_time, x, y, p, record):
-    """Evolve u from nucleation to final_area; returns the final phase field and step count.
+    """Evolve the new chamber's phase field from nucleation to final_area.
 
-    The time stepping runs on a window around the growing chamber, not the whole
-    grid. The window's outer ring is held at u = 0, like the grid's, so the step
-    functions work on it unchanged. At every snapshot the window is refitted to
-    the chamber. If u reached a side of the window during an interval, the window
-    was too small: that side is widened and the interval is repeated. A side
-    that lies on the grid border cannot be widened; there the usual edge check
-    applies instead.
+    Returns the final phase field and the number of time steps.
     """
     h = p.spacing
-    u_full = nucleate(labels, chamber, x, y, p)
-    seed_area = h**2 * float(u_full.sum())
+    u = nucleate(labels, chamber, x, y, p)
+    seed_area = h**2 * float(u.sum())
     if final_area <= seed_area:
         raise ValueError(f"Chamber {chamber.cell} target {final_area:.4g} must exceed seed area {seed_area:.4g}.")
-    target, _ = demo_growth(seed_area, final_area, p)
-    adhesion_full = adhesion_field(labels > 0, p)
-    dt_cap = stable_dt(p)
-    margin = math.ceil(WINDOW_MARGIN * p.interface_width / h)
-    t, steps = 0.0, 0
-    max_error = torch.zeros((), device=u_full.device, dtype=DTYPE)
-    snapshot(record, labels, chamber, u_full, t, target, start_time, h)
-    window = Window.around(u_full > WINDOW_TAIL, margin)
+    target = target_area(seed_area, final_area, p)
+    adhesion = adhesion_field(labels > 0, p)
     n = p.snapshots_per_chamber - 1
-    for save_time in (p.formation_time * i / n for i in range(1, n + 1)):
-        t_start, steps_start = t, steps
-        while True:
-            allowed = window.crop(chamber.allowed).clone()
-            allowed[[0, -1], :] = False
-            allowed[:, [0, -1]] = False
-            aperture, adhesion = window.crop(chamber.aperture), window.crop(adhesion_full)
-            u = window.crop(u_full) * allowed
-            # Nothing in this loop reads back from the device; problems are only
-            # checked at the snapshot, from running maxima kept on the device.
-            interval_error = torch.zeros((), device=u.device, dtype=DTYPE)
-            edges = torch.zeros(4, device=u.device, dtype=DTYPE)
-            while t < save_time - 1e-12:
-                dt = min(dt_cap, save_time - t)
-                u, residual = corrected_phase_area(u + dt*phase_rhs(u, adhesion, p), target(t + dt),
-                                                   allowed, aperture, h)
-                t += dt
-                steps += 1
-                interval_error = torch.maximum(interval_error, residual)
-                edges = torch.maximum(edges, edge_values(u))
-            edges = check_phase(u, edges, interval_error, target(t))
-            if any(e > EDGE_THRESHOLD and border for e, border in zip(edges, window.at_border)):
-                raise RuntimeError("Growth reached the computational edge; increase half_width.")
-            spilled = [e > WINDOW_SPILL and not border for e, border in zip(edges, window.at_border)]
-            if not any(spilled):
-                break
-            window = window.widened(margin, spilled)
-            t, steps = t_start, steps_start
-        u_full = window.paste(u)
-        max_error = torch.maximum(max_error, interval_error)
-        snapshot(record, labels, chamber, u_full, t, target, start_time, h)
-        window = Window.around(u_full > WINDOW_TAIL, margin)
-    record.max_diffuse_error = max(record.max_diffuse_error, float(max_error))
-    return u_full, steps
+    u, steps, max_error = integrate(
+        u, chamber.allowed, chamber.aperture,
+        diffusion=p.curvature_coefficient,
+        reaction=lambda u, window: reaction(u, window.crop(adhesion), p),
+        target=target,
+        save_times=[p.formation_time * i / n for i in range(1, n + 1)],
+        dt_max=stable_dt(h, p.curvature_coefficient, reaction_rate_bound(p), p.max_dt),
+        h=h,
+        margin=math.ceil(WINDOW_MARGIN * p.interface_width / h),
+        on_snapshot=lambda u, t: snapshot(record, labels, chamber, u, t, target, start_time, h))
+    record.max_diffuse_error = max(record.max_diffuse_error, max_error)
+    return u, steps
 
 
 def freeze(labels, chamber, u, final_area, steps, x, y, p, record):
@@ -166,7 +109,7 @@ def freeze(labels, chamber, u, final_area, steps, x, y, p, record):
 def simulate_colony(parameters=None, chamber_areas=None, device="cpu"):
     """Grow the colony on `device` (e.g. "cuda")."""
     p = parameters or ColonyParameters()
-    chamber_areas = validate(p, chamber_areas)
+    chamber_areas = chamber_targets(p, chamber_areas)
     coords = torch.arange(-p.half_width, p.half_width + p.spacing/2, p.spacing,
                           dtype=DTYPE, device=device)
     x, y = torch.meshgrid(coords, coords, indexing="xy")

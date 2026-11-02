@@ -1,4 +1,4 @@
-"""Model rules: seed geometry, where each chamber attaches, how it starts, what attracts it."""
+"""Colony layout: the initial seed, and where each new chamber attaches."""
 from __future__ import annotations
 
 import math
@@ -6,8 +6,8 @@ from dataclasses import dataclass
 
 import torch
 
-from .morphology import component_containing, dilate, distance_to, is_connected
-from .parameters import ADHESION_CUTOFF_RANGES, MIN_SEED_PIXELS, SEED_STYLES
+from .morphology import component_containing, dilate, is_connected
+from .parameters import MIN_SEED_PIXELS, SEED_STYLES
 
 
 @dataclass
@@ -88,27 +88,3 @@ def place_chamber(labels, index, seed_chambers, x, y, p):
         raise RuntimeError("Selected aperture intersects the computational boundary.")
     return Chamber(cell, parent, allowed, aperture, anchor)
 
-
-def nucleate(labels, chamber, x, y, p):
-    """Initial u: a soft disc just outside the aperture, pointing away from the parent."""
-    parent = labels == chamber.parent
-    center = torch.stack((x[parent].mean(), y[parent].mean()))
-    anchor = torch.stack((x[chamber.anchor], y[chamber.anchor]))
-    outward = anchor - center
-    outward /= max(float(torch.linalg.norm(outward)), 1e-12)
-    blob_center = anchor + p.nucleus_offset*outward
-    distance = torch.hypot(x - blob_center[0], y - blob_center[1])
-    u = (1 / (1 + torch.exp((distance - p.nucleus_radius) / p.interface_width))) * chamber.allowed
-    # Compact support prevents phase nucleation far from the seeded chamber.
-    u[distance > p.nucleus_support_radius] = 0.0
-    u[chamber.aperture] = 1.0
-    return u
-
-
-def adhesion_field(occupied, p):
-    """Attraction that decays with distance from any existing chamber.
-
-    Zero beyond ADHESION_CUTOFF_RANGES adhesion ranges.
-    """
-    distance = distance_to(occupied, p.spacing, ADHESION_CUTOFF_RANGES * p.adhesion_range)
-    return (p.adhesion_strength * torch.exp(-distance / p.adhesion_range))
