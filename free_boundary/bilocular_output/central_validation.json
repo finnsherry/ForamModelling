@@ -21,7 +21,6 @@
     "max_dt": 0.006
   },
   "max_diffuse_area_error_all_steps": 2.220446049250313e-16,
-  "central_wall_fixed": true,
   "pixel_area_tolerance": 0.00031250000000000006,
   "seed_chambers": 2,
   "seed_reports": [
@@ -83,7 +82,7 @@
       "chamber": 5,
       "parent": 4,
       "target_area": 0.37676799999999994,
-      "diffuse_final_area": 0.37676799999999994,
+      "diffuse_final_area": 0.376768,
       "frozen_pixel_area": 0.37687500000000007,
       "area_rounding_error": 0.00010700000000013477,
       "contacts_with_earlier_chambers": [
@@ -101,7 +100,7 @@
       "chamber": 6,
       "parent": 5,
       "target_area": 0.4370508799999999,
-      "diffuse_final_area": 0.4370508799999998,
+      "diffuse_final_area": 0.4370508799999999,
       "frozen_pixel_area": 0.43687500000000007,
       "area_rounding_error": 0.0001758799999998506,
       "contacts_with_earlier_chambers": [

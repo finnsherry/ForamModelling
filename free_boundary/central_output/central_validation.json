@@ -2,6 +2,10 @@
   "parameters": {
     "new_chambers": 6,
     "central_radius": 0.3,
+    "seed_mode": "single",
+    "second_piece_radius_ratio": 1.1,
+    "seed_separation_fraction": 0.6,
+    "seed_orientation_degrees": 0.0,
     "spacing": 0.025,
     "half_width": 2.2,
     "first_chamber_area": 0.28,
@@ -17,14 +21,25 @@
     "max_dt": 0.006
   },
   "max_diffuse_area_error_all_steps": 2.220446049250313e-16,
-  "central_wall_fixed": true,
   "pixel_area_tolerance": 0.00031250000000000006,
+  "seed_chambers": 1,
+  "seed_reports": [
+    {
+      "chamber": 1,
+      "name": "Original one-chamber central seed",
+      "pixel_area": 0.27437500000000004,
+      "centroid": [
+        0.0006833712983974709,
+        0.000683371298397473
+      ]
+    }
+  ],
   "reports": [
     {
       "chamber": 2,
       "parent": 1,
       "target_area": 0.28,
-      "diffuse_final_area": 0.27999999999999997,
+      "diffuse_final_area": 0.28,
       "frozen_pixel_area": 0.28,
       "area_rounding_error": 0.0,
       "contacts_with_earlier_chambers": [
@@ -59,7 +74,7 @@
       "chamber": 4,
       "parent": 3,
       "target_area": 0.37676799999999994,
-      "diffuse_final_area": 0.376768,
+      "diffuse_final_area": 0.3767679999999999,
       "frozen_pixel_area": 0.37687500000000007,
       "area_rounding_error": 0.00010700000000013477,
       "contacts_with_earlier_chambers": [
@@ -76,7 +91,7 @@
       "chamber": 5,
       "parent": 4,
       "target_area": 0.4370508799999999,
-      "diffuse_final_area": 0.43705088,
+      "diffuse_final_area": 0.4370508799999999,
       "frozen_pixel_area": 0.43687500000000007,
       "area_rounding_error": 0.0001758799999998506,
       "contacts_with_earlier_chambers": [
