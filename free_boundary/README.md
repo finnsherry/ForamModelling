@@ -90,15 +90,15 @@ adjustable.
 
 The two generating discs have radii
 
-    r1 = first_piece_radius_fraction * central_radius,   (default 0.70)
+    r1 = central_radius,
     r2 = r1 * second_piece_radius_ratio,
 
 and centre separation
 
     d = seed_separation_fraction * (r1 + r2).
 
-The centres sit at opposite ends of a line through the origin, rotated by
-`seed_orientation_degrees`. Compartment 1 keeps its whole generating disc.
+The centres sit on the x axis, at -d/2 and d/2. Compartment 1 keeps its whole
+generating disc.
 Compartment 2 is the part of its own disc that lies outside compartment 1. So
 the interiors don't overlap, and the shared interface connects the two. The
 second compartment is usually crescent-like rather than a full disc, so the
@@ -115,17 +115,16 @@ connection between them.
 ```python
 parameters = ColonyParameters(
     seed_mode="bilocular",
-    central_radius=0.30,
+    central_radius=0.21,
     second_piece_radius_ratio=1.10,
     seed_separation_fraction=0.60,
-    seed_orientation_degrees=0.0,
     new_chambers=6,
 )
 ```
 
 ```bash
 python -m foram_colony --seed-mode bilocular --second-piece-radius-ratio 0.85 \
-  --seed-separation-fraction 0.60 --seed-orientation-degrees 30 --output output/rotated_pair
+  --seed-separation-fraction 0.60 --output output/small_pair
 ```
 
 ### Unilocular seed
@@ -149,12 +148,12 @@ The next aperture is placed on the previous chamber's exposed wall, nearest a
 guide point that turns by `turning_angle_degrees` around the seed for each new
 chamber. The guide point spirals outward: for new chamber i (counting from 0)
 it lies at distance `guide_start_radius + i * guide_radius_increment` from the
-origin.
+origin, at angle `i * turning_angle_degrees` counterclockwise from the +x axis.
 
 ## Parameters
 
 ```bash
-python -m foram_colony --new-chambers 6 --adhesion-strength 1.0 --turning-angle-degrees 65
+python -m foram_colony --new-chambers 6 --adhesion-strength 2.5 --turning-angle-degrees 65
 python -m foram_colony --adhesion-strength 0.0 --output output/no_adhesion
 python -m foram_colony --spacing 0.02 --output output/finer_grid
 ```
@@ -167,7 +166,7 @@ parameters = ColonyParameters(
     first_chamber_area=0.28,
     chamber_area_ratio=1.16,
     turning_angle_degrees=65.0,
-    adhesion_strength=1.0,
+    adhesion_strength=2.5,
     adhesion_range=0.14,
     aperture_radius=0.075,
     spacing=0.025,
@@ -181,11 +180,13 @@ parameters = ColonyParameters(
   arrangement.
 - `chamber_area_ratio` sets the growth in completed chamber size from one
   chamber to the next.
-- Each chamber follows an illustrative normalized sigmoid over `formation_time`,
-  with rate `growth_rate` and centred at `growth_midpoint_fraction` of it.
+- Time is measured in formation times: each chamber grows over one time unit,
+  so chamber i forms between global times i and i + 1. Its area follows an
+  illustrative normalized sigmoid with rate `growth_rate`, centred at
+  `growth_midpoint_fraction`.
 - Each new chamber starts as a soft disc of `nucleus_radius`, centred
-  `nucleus_offset` outward from its aperture and cut off beyond
-  `nucleus_support_radius`.
+  `nucleus_offset` outward from its aperture. It is cut off 4.75 interface
+  widths beyond its radius, where its profile is below 0.9%.
 
 Numerical settings that don't define the model (precision, tolerances, the
 time-stepping window) are constants at the top of `parameters.py`.

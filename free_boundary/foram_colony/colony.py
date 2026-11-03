@@ -17,15 +17,13 @@ from .solver import integrate, stable_dt
 
 
 def crisp_chamber(phase, allowed, aperture, area, h):
-    """Threshold to the nearest pixel-area target while retaining the aperture."""
+    """The `count` pixels of highest phase within allowed, aperture always included."""
     count = round(area / h**2)
-    candidates = torch.nonzero((allowed & ~aperture).flatten()).squeeze(1)
-    needed = count - int(aperture.sum())
-    if needed <= 0 or needed > len(candidates):
+    if not int(aperture.sum()) < count <= int(allowed.sum()):
         raise ValueError("Target area incompatible with aperture or remaining space.")
-    chosen = candidates[torch.topk(phase.flatten()[candidates], needed).indices]
-    mask = aperture.clone()
-    mask.view(-1)[chosen] = True
+    score = torch.where(aperture, torch.inf, torch.where(allowed, phase, -torch.inf))
+    mask = torch.zeros_like(aperture)
+    mask.view(-1)[torch.topk(score.flatten(), count).indices] = True
     return mask
 
 
@@ -72,7 +70,7 @@ def grow(labels, chamber, final_area, start_time, x, y, p, result):
         diffusion=p.curvature_coefficient,
         reaction=lambda u, window: reaction(u, adhesion[window], p),
         target=target,
-        save_times=[p.formation_time * i / n for i in range(1, n + 1)],
+        save_times=[i / n for i in range(1, n + 1)],
         dt_max=stable_dt(h, p.curvature_coefficient, reaction_rate_bound(p)),
         h=h,
         margin=math.ceil(WINDOW_MARGIN * p.interface_width / h),
@@ -144,7 +142,7 @@ def simulate_colony(parameters=None, device="cpu"):
 
     for index, final_area in enumerate(p.final_areas()):
         chamber = place_chamber(labels, index, seed_chambers, x, y, p)
-        u, steps = grow(labels, chamber, final_area, index*p.formation_time, x, y, p, result)
+        u, steps = grow(labels, chamber, final_area, index, x, y, p, result)
         report = freeze(labels, chamber, u, final_area, x, y, p)
         result["reports"].append(report | {"steps": steps})
 

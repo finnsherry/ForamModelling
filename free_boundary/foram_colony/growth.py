@@ -16,21 +16,18 @@ import torch
 import torch.nn.functional as F
 
 from .morphology import distance_to
-from .parameters import ADHESION_CUTOFF_RANGES
+from .parameters import ADHESION_CUTOFF_RANGES, NUCLEUS_CUTOFF_WIDTHS
 
 
 def target_area(initial_area, final_area, p):
     """Prescribed chamber area over time.
 
-    A sigmoid from initial_area at t = 0 to final_area at p.formation_time.
+    A sigmoid from initial_area at t = 0 to final_area at t = 1, the formation time.
     """
-    end_time = p.formation_time
-    rate, midpoint = p.growth_rate, p.growth_midpoint_fraction * end_time
-
     def sigmoid(t):
-        return 1.0 / (1.0 + math.exp(-rate * (t - midpoint)))
+        return 1.0 / (1.0 + math.exp(-p.growth_rate * (t - p.growth_midpoint_fraction)))
 
-    f0, f1 = sigmoid(0.0), sigmoid(end_time)
+    f0, f1 = sigmoid(0.0), sigmoid(1.0)
     scale = (final_area - initial_area) / (f1 - f0)
 
     def area(t):
@@ -50,7 +47,7 @@ def nucleate(labels, chamber, x, y, p):
     distance = torch.hypot(x - blob_center[0], y - blob_center[1])
     u = (1 / (1 + torch.exp((distance - p.nucleus_radius) / p.interface_width))) * chamber.allowed
     # Compact support prevents phase nucleation far from the seeded chamber.
-    u[distance > p.nucleus_support_radius] = 0.0
+    u[distance > p.nucleus_radius + NUCLEUS_CUTOFF_WIDTHS*p.interface_width] = 0.0
     u[chamber.aperture] = 1.0
     return u
 

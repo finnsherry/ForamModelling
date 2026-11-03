@@ -25,20 +25,18 @@ def make_seed(p, x, y):
     For a bilocular seed, two overlapping generating discs are partitioned:
     compartment 1 retains its disc; compartment 2 occupies the second disc
     outside compartment 1. The resulting compartments have disjoint interiors
-    and a common interface. This is geometry, not a universal embryonic shape.
+    and a common interface.
     """
     labels = torch.zeros(x.shape, dtype=torch.int16, device=x.device)
     if p.seed_mode == "unilocular":
         labels[torch.hypot(x, y) <= p.central_radius] = 1
     else:
-        r1 = p.first_piece_radius_fraction * p.central_radius
+        r1 = p.central_radius
         r2 = r1 * p.second_piece_radius_ratio
         distance = p.seed_separation_fraction * (r1 + r2)
-        angle = math.radians(p.seed_orientation_degrees)
-        # The disc centres are at -(dx, dy) and +(dx, dy).
-        dx, dy = 0.5*distance*math.cos(angle), 0.5*distance*math.sin(angle)
-        first = torch.hypot(x + dx, y + dy) <= r1
-        second = torch.hypot(x - dx, y - dy) <= r2
+        # The disc centres are at (-distance/2, 0) and (distance/2, 0).
+        first = torch.hypot(x + 0.5*distance, y) <= r1
+        second = torch.hypot(x - 0.5*distance, y) <= r2
         labels[first] = 1
         labels[second & ~first] = 2
 
@@ -94,7 +92,7 @@ def place_chamber(labels, index, seed_chambers, x, y, p):
         allowed,
         x,
         y,
-        angle=index*p.turning_angle_degrees + p.seed_orientation_degrees,
+        angle=index*p.turning_angle_degrees,
         guide_radius=p.guide_start_radius + index*p.guide_radius_increment,
         radius=p.aperture_radius,
     )

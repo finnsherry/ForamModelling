@@ -30,6 +30,10 @@ ADHESION_CUTOFF_RANGES = 5
 # Fewest pixels a seed compartment may have and still count as resolved.
 MIN_SEED_PIXELS = 12
 
+# The nucleus is cut off beyond this many interface widths outside its radius;
+# at 4.75 its profile has fallen below 0.9%.
+NUCLEUS_CUTOFF_WIDTHS = 4.75
+
 # The flood fill checks for convergence once every this many dilations.
 FLOOD_CHECK_EVERY = 8
 
@@ -45,8 +49,8 @@ class ColonyParameters:
     new_chambers: int = 6
     """Number of chambers grown after the seed."""
 
-    central_radius: float = 0.30
-    """Radius of the unilocular seed disc; the bilocular discs are scaled from it."""
+    central_radius: float = 0.21
+    """Radius of the unilocular seed disc, or of the first bilocular generating disc."""
 
     seed_mode: Literal["unilocular", "bilocular"] = "bilocular"
     """unilocular: the seed is one disc. bilocular: two adjacent compartments."""
@@ -56,10 +60,6 @@ class ColonyParameters:
 
     seed_separation_fraction: float = 0.60
     """Bilocular: distance between the disc centres, as a fraction of the sum of their radii (< 1)."""
-
-    seed_orientation_degrees: float = 0.0
-    """Direction from the first seed disc to the second, counterclockwise from +x.
-    The aperture guide angles are measured from it."""
 
     spacing: float = 0.025
     """Grid spacing."""
@@ -80,16 +80,13 @@ class ColonyParameters:
     turning_angle_degrees: float = 65.0
     """Angle by which the aperture guide point turns from one new chamber to the next."""
 
-    formation_time: float = 2.5
-    """Time a chamber takes to grow from its nucleus to its final area."""
-
-    curvature_coefficient: float = 0.003
+    curvature_coefficient: float = 0.0075
     """Diffusion coefficient of the phase field; sets how strongly curvature is smoothed."""
 
     interface_width: float = 0.04
     """Width of the diffuse chamber interface."""
 
-    adhesion_strength: float = 1.0
+    adhesion_strength: float = 2.5
     """Strength of the attraction towards existing chambers; 0 turns it off."""
 
     adhesion_range: float = 0.14
@@ -100,9 +97,6 @@ class ColonyParameters:
 
     snapshots_per_chamber: int = 18
     """Frames recorded per chamber, including its nucleus."""
-
-    first_piece_radius_fraction: float = 0.70
-    """Bilocular: radius of the first generating disc, as a fraction of central_radius."""
 
     guide_start_radius: float = 0.55
     """The aperture of new chamber i (from 0) is the exposed parent wall nearest a guide
@@ -117,14 +111,11 @@ class ColonyParameters:
     nucleus_radius: float = 0.13
     """Radius of the soft disc a new chamber starts from."""
 
-    nucleus_support_radius: float = 0.32
-    """The nucleus is cut off beyond this distance from its centre."""
-
-    growth_rate: float = 0.65
+    growth_rate: float = 1.625
     """Rate of the sigmoid in time that the target area follows."""
 
     growth_midpoint_fraction: float = 0.48
-    """Midpoint of the growth sigmoid, as a fraction of formation_time."""
+    """Midpoint of the growth sigmoid, as a fraction of the formation time."""
 
     def __post_init__(self):
         if self.seed_mode not in SEED_STYLES:
@@ -136,17 +127,14 @@ class ColonyParameters:
             self.half_width,
             self.first_chamber_area,
             self.chamber_area_ratio,
-            self.formation_time,
             self.curvature_coefficient,
             self.interface_width,
             self.adhesion_range,
             self.aperture_radius,
             self.second_piece_radius_ratio,
             self.seed_separation_fraction,
-            self.first_piece_radius_fraction,
             self.guide_start_radius,
             self.nucleus_radius,
-            self.nucleus_support_radius,
             self.growth_rate,
         ]
         if not all(math.isfinite(v) and v > 0 for v in positive):
