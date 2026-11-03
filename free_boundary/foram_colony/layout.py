@@ -6,7 +6,7 @@ from dataclasses import dataclass
 import torch
 
 from .morphology import component_containing, dilate, is_connected
-from .parameters import MIN_SEED_PIXELS, SEED_STYLES
+from .parameters import SEED_STYLES, ColonyParameters, ImplementationParameters
 
 
 @dataclass
@@ -19,7 +19,7 @@ class Chamber:
     anchor: tuple[int, int]   # grid index of the aperture centre
 
 
-def make_seed(p, x, y):
+def make_seed(p: ColonyParameters, q: ImplementationParameters, x, y):
     """Initial labels: one disc (unilocular) or two adjacent compartments (bilocular).
 
     For a bilocular seed, two overlapping generating discs are partitioned:
@@ -43,7 +43,7 @@ def make_seed(p, x, y):
     reports = []
     for cell, name in enumerate(SEED_STYLES[p.seed_mode]["names"], start=1):
         mask = labels == cell
-        if int(mask.sum()) < MIN_SEED_PIXELS or not is_connected(mask):
+        if int(mask.sum()) < q.min_seed_pixels or not is_connected(mask):
             raise ValueError(
                 "An initial compartment is missing, disconnected or under-resolved. "
                 "Refine the grid or adjust seed geometry."
@@ -51,12 +51,12 @@ def make_seed(p, x, y):
         reports.append({
             "chamber": cell,
             "name": name,
-            "pixel_area": float(mask.sum()) * p.spacing**2,
+            "pixel_area": float(mask.sum()) * q.spacing**2,
             "centroid": [float(x[mask].mean()), float(y[mask].mean())],
         })
     if not is_connected(labels > 0):
         raise ValueError(
-            "The central seed pieces do not connect; adjust their separation or grid spacing."
+            "The central seed pieces do not connect; adjust their separation or grid_points."
         )
     return labels, reports
 
@@ -81,7 +81,7 @@ def select_aperture(labels, parent, allowed, x, y, angle, guide_radius, radius):
     return aperture, (cy, cx)
 
 
-def place_chamber(labels, index, seed_chambers, x, y, p):
+def place_chamber(labels, index, seed_chambers, x, y, p: ColonyParameters):
     parent, cell = index + seed_chambers, index + seed_chambers + 1
     allowed = labels == 0
     allowed[[0, -1], :] = False   # keep the outer ring empty

@@ -1,7 +1,7 @@
 """The simulation driver: grows the colony chamber by chamber, place → grow → freeze.
 
-Everything runs as torch tensors on `device`, in parameters.DTYPE. Only what is
-recorded for output is converted to numpy.
+Everything runs as torch tensors on `device`, in the dtype of the
+ImplementationParameters. Only what is recorded for output is converted to numpy.
 """
 
 import math
@@ -12,7 +12,7 @@ import torch
 from .layout import make_seed, place_chamber
 from .growth import adhesion_field, nucleate, reaction, reaction_rate_bound, target_area
 from .morphology import dilate, is_connected
-from .parameters import DTYPE, WINDOW_MARGIN, ColonyParameters
+from .parameters import ColonyParameters, ImplementationParameters
 from .solver import integrate, stable_dt
 
 
@@ -47,20 +47,30 @@ def snapshot(result, labels, chamber, u, t, target, start_time, h):
     ])
 
 
-def grow(labels, chamber, final_area, start_time, x, y, p, result):
+def grow(
+    labels,
+    chamber,
+    final_area,
+    start_time,
+    x,
+    y,
+    p: ColonyParameters,
+    q: ImplementationParameters,
+    result,
+):
     """Evolve the new chamber's phase field from nucleation to final_area.
 
     Returns the final phase field and the number of time steps.
     """
-    h = p.spacing
-    u = nucleate(labels, chamber, x, y, p)
+    h = q.spacing
+    u = nucleate(labels, chamber, x, y, p, q)
     seed_area = h**2 * float(u.sum())
     if final_area <= seed_area:
         raise ValueError(
             f"Chamber {chamber.cell} target {final_area:.4g} must exceed seed area {seed_area:.4g}."
         )
     target = target_area(seed_area, final_area, p)
-    adhesion = adhesion_field(labels > 0, p)
+    adhesion = adhesion_field(labels > 0, p, q)
     n = p.snapshots_per_chamber - 1
 
     u, steps, max_error = integrate(
@@ -72,8 +82,8 @@ def grow(labels, chamber, final_area, start_time, x, y, p, result):
         target=target,
         save_times=[i / n for i in range(1, n + 1)],
         dt_max=stable_dt(h, p.curvature_coefficient, reaction_rate_bound(p)),
-        h=h,
-        margin=math.ceil(WINDOW_MARGIN * p.interface_width / h),
+        margin=math.ceil(q.window_margin * p.interface_width / h),
+        q=q,
         on_snapshot=lambda u, t: snapshot(result, labels, chamber, u, t, target, start_time, h),
     )
     result["max_diffuse_area_error_all_steps"] = max(
@@ -82,9 +92,18 @@ def grow(labels, chamber, final_area, start_time, x, y, p, result):
     return u, steps
 
 
-def freeze(labels, chamber, u, final_area, x, y, p):
+def freeze(
+    labels,
+    chamber,
+    u,
+    final_area,
+    x,
+    y,
+    p: ColonyParameters,
+    q: ImplementationParameters,
+):
     """Commit the grown chamber to labels; returns its report, including its contacts."""
-    h = p.spacing
+    h = q.spacing
     occupied = labels > 0
     mask = crisp_chamber(u, chamber.allowed, chamber.aperture, final_area, h)
     # Checked only here: the snapshots crisped in grow() are just for display.
@@ -111,23 +130,30 @@ def freeze(labels, chamber, u, final_area, x, y, p):
     }
 
 
-def simulate_colony(parameters=None, device="cpu"):
-    """Grow the colony on `device` (e.g. "cuda")."""
+def simulate_colony(
+    parameters: ColonyParameters | None = None,
+    implementation: ImplementationParameters | None = None,
+    device="cpu",
+):
+    """Grow the colony on `device` (e.g. "cuda").
+
+    parameters is a ColonyParameters and implementation an
+    ImplementationParameters; None means the defaults.
+    """
     p = parameters or ColonyParameters()
-    coords = torch.arange(
-        -p.half_width,
-        p.half_width + p.spacing/2,
-        p.spacing,
-        dtype=DTYPE,
-        device=device,
-    )
+    q = implementation or ImplementationParameters()
+    n = q.grid_points
+    # Integer and half-integer offsets are exact, so the grid is exactly symmetric about 0.
+    offsets = torch.arange(n, dtype=q.torch_dtype, device=device) - (n - 1)/2
+    coords = q.spacing * offsets
     x, y = torch.meshgrid(coords, coords, indexing="xy")
 
-    labels, seed_reports = make_seed(p, x, y)
+    labels, seed_reports = make_seed(p, q, x, y)
     seed_chambers = len(seed_reports)
     # grow() appends to the frames and history and updates the largest area error.
     result = {
         "parameters": p,
+        "implementation": q,
         "coordinates": x[0].cpu().numpy(),
         "frames": [{
             "labels": labels.clone().cpu().numpy(),
@@ -142,8 +168,8 @@ def simulate_colony(parameters=None, device="cpu"):
 
     for index, final_area in enumerate(p.final_areas()):
         chamber = place_chamber(labels, index, seed_chambers, x, y, p)
-        u, steps = grow(labels, chamber, final_area, index, x, y, p, result)
-        report = freeze(labels, chamber, u, final_area, x, y, p)
+        u, steps = grow(labels, chamber, final_area, index, x, y, p, q, result)
+        report = freeze(labels, chamber, u, final_area, x, y, p, q)
         result["reports"].append(report | {"steps": steps})
 
     result["labels"] = labels.cpu().numpy()

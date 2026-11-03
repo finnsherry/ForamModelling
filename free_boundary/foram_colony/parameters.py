@@ -4,43 +4,12 @@ from typing import Literal
 
 import torch
 
-# Precision of every floating-point tensor in the simulation.
-DTYPE = torch.float32
-
-# Newton steps per area projection. One is exact to rounding unless pixels hit
-# the 0/1 clamp during the step; check_phase raises if the residual shows that
-# it was not enough. A second step costs about 25% of the run time.
-NEWTON_STEPS = 1
-
-# The time-stepping window is the bounding box of u > WINDOW_TAIL plus a margin
-# of WINDOW_MARGIN interface widths, refitted at every snapshot. If u exceeds
-# WINDOW_SPILL next to the window border, the run stops with an error.
-WINDOW_TAIL = 1e-6
-WINDOW_SPILL = 1e-3
-WINDOW_MARGIN = 8
-
-# Accepted area-projection residual, in multiples of DTYPE's machine epsilon
-# times the area: a float sum is only accurate to about eps relative.
-AREA_TOLERANCE_EPS = 64
-
-# The adhesion field is computed out to this many adhesion ranges and is zero
-# beyond; at 5 it has fallen below 0.7% of its value at the wall.
-ADHESION_CUTOFF_RANGES = 5
-
-# Fewest pixels a seed compartment may have and still count as resolved.
-MIN_SEED_PIXELS = 12
-
-# The nucleus is cut off beyond this many interface widths outside its radius;
-# at 4.75 its profile has fallen below 0.9%.
-NUCLEUS_CUTOFF_WIDTHS = 4.75
-
-# The flood fill checks for convergence once every this many dilations.
-FLOOD_CHECK_EVERY = 8
-
-
 @dataclass
 class ColonyParameters:
-    """Parameters of the seed, the chambers, the growth model and the grid; validated on creation.
+    """Parameters of the seed, the chambers and the growth model; validated on creation.
+
+    Lengths are in units of the grid's half-width: the grid covers [-1, 1] in x
+    and in y. Times are in formation times: each chamber grows over one time unit.
 
     The docstring under each field documents it, and is the help text of its
     command-line option.
@@ -49,7 +18,7 @@ class ColonyParameters:
     new_chambers: int = 6
     """Number of chambers grown after the seed."""
 
-    central_radius: float = 0.21
+    central_radius: float = 0.0955
     """Radius of the unilocular seed disc, or of the first bilocular generating disc."""
 
     seed_mode: Literal["unilocular", "bilocular"] = "bilocular"
@@ -61,13 +30,7 @@ class ColonyParameters:
     seed_separation_fraction: float = 0.60
     """Bilocular: distance between the disc centres, as a fraction of the sum of their radii (< 1)."""
 
-    spacing: float = 0.025
-    """Grid spacing."""
-
-    half_width: float = 2.2
-    """The grid covers [-half_width, half_width] in x and in y."""
-
-    first_chamber_area: float = 0.28
+    first_chamber_area: float = 0.0579
     """Final area of the first new chamber, unless chamber_areas is given."""
 
     chamber_area_ratio: float = 1.16
@@ -80,35 +43,35 @@ class ColonyParameters:
     turning_angle_degrees: float = 65.0
     """Angle by which the aperture guide point turns from one new chamber to the next."""
 
-    curvature_coefficient: float = 0.0075
+    curvature_coefficient: float = 0.00155
     """Diffusion coefficient of the phase field; sets how strongly curvature is smoothed."""
 
-    interface_width: float = 0.04
+    interface_width: float = 0.0182
     """Width of the diffuse chamber interface."""
 
     adhesion_strength: float = 2.5
     """Strength of the attraction towards existing chambers; 0 turns it off."""
 
-    adhesion_range: float = 0.14
+    adhesion_range: float = 0.0636
     """Decay length of the adhesion with distance from existing chambers."""
 
-    aperture_radius: float = 0.075
+    aperture_radius: float = 0.0341
     """Radius of the aperture, the patch of parent wall a new chamber grows from."""
 
     snapshots_per_chamber: int = 18
     """Frames recorded per chamber, including its nucleus."""
 
-    guide_start_radius: float = 0.55
+    guide_start_radius: float = 0.25
     """The aperture of new chamber i (from 0) is the exposed parent wall nearest a guide
     point at distance guide_start_radius + i * guide_radius_increment from the origin."""
 
-    guide_radius_increment: float = 0.075
+    guide_radius_increment: float = 0.0341
     """Increase of the guide point's distance from the origin per new chamber."""
 
-    nucleus_offset: float = 0.07
+    nucleus_offset: float = 0.0318
     """Distance of the nucleus centre outward from the aperture centre."""
 
-    nucleus_radius: float = 0.13
+    nucleus_radius: float = 0.0591
     """Radius of the soft disc a new chamber starts from."""
 
     growth_rate: float = 1.625
@@ -123,8 +86,6 @@ class ColonyParameters:
 
         positive = [
             self.central_radius,
-            self.spacing,
-            self.half_width,
             self.first_chamber_area,
             self.chamber_area_ratio,
             self.curvature_coefficient,
@@ -168,6 +129,73 @@ class ColonyParameters:
         if self.chamber_areas is not None:
             return list(self.chamber_areas)
         return [self.first_chamber_area * self.chamber_area_ratio**i for i in range(self.new_chambers)]
+
+
+@dataclass
+class ImplementationParameters:
+    """Numerical settings that don't define the model; validated on creation.
+
+    The docstring under each field documents it, and is the help text of its
+    command-line option.
+    """
+
+    grid_points: int = 177
+    """Grid samples per side; the grid covers [-1, 1] in x and in y."""
+
+    dtype: Literal["float32", "float64"] = "float32"
+    """Precision of every floating-point tensor in the simulation."""
+
+    newton_steps: int = 1
+    """Newton steps per area projection. One is exact to rounding unless pixels hit the
+    0/1 clamp during the step; the run stops if the residual shows it was not enough.
+    A second step costs about 25% of the run time."""
+
+    window_tail: float = 1e-6
+    """The time-stepping window is the bounding box of u > window_tail plus a margin,
+    refitted at every snapshot."""
+
+    window_margin: float = 8.0
+    """Margin of the time-stepping window, in interface widths."""
+
+    window_spill: float = 1e-3
+    """The run stops if u exceeds this next to the window border."""
+
+    area_tolerance_eps: float = 64.0
+    """Accepted area-projection residual, in multiples of the dtype's machine epsilon times
+    the area: a float sum is only accurate to about eps relative."""
+
+    adhesion_cutoff_ranges: float = 5.0
+    """The adhesion field is computed out to this many adhesion ranges and is zero beyond;
+    at 5 it has fallen below 0.7% of its value at the wall."""
+
+    nucleus_cutoff_widths: float = 4.75
+    """The nucleus is cut off beyond this many interface widths outside its radius; at
+    4.75 its profile has fallen below 0.9%."""
+
+    min_seed_pixels: int = 12
+    """Fewest pixels a seed compartment may have and still count as resolved."""
+
+    def __post_init__(self):
+        if self.grid_points < 3 or self.newton_steps < 1 or self.min_seed_pixels < 1:
+            raise ValueError("grid_points must be at least 3, newton_steps and min_seed_pixels at least 1.")
+        positive = [
+            self.window_tail,
+            self.window_margin,
+            self.window_spill,
+            self.area_tolerance_eps,
+            self.adhesion_cutoff_ranges,
+            self.nucleus_cutoff_widths,
+        ]
+        if not all(math.isfinite(v) and v > 0 for v in positive):
+            raise ValueError("Window, tolerance and cutoff settings must be positive and finite.")
+
+    @property
+    def spacing(self):
+        return 2 / (self.grid_points - 1)
+
+    @property
+    def torch_dtype(self):
+        return getattr(torch, self.dtype)
 
 
 # Per seed mode: the names of the seed compartments, and their plot colours

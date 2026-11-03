@@ -16,10 +16,10 @@ import torch
 import torch.nn.functional as F
 
 from .morphology import distance_to
-from .parameters import ADHESION_CUTOFF_RANGES, NUCLEUS_CUTOFF_WIDTHS
+from .parameters import ColonyParameters, ImplementationParameters
 
 
-def target_area(initial_area, final_area, p):
+def target_area(initial_area, final_area, p: ColonyParameters):
     """Prescribed chamber area over time.
 
     A sigmoid from initial_area at t = 0 to final_area at t = 1, the formation time.
@@ -36,7 +36,7 @@ def target_area(initial_area, final_area, p):
     return area
 
 
-def nucleate(labels, chamber, x, y, p):
+def nucleate(labels, chamber, x, y, p: ColonyParameters, q: ImplementationParameters):
     """Initial u: a soft disc just outside the aperture, pointing away from the parent."""
     parent = labels == chamber.parent
     center = torch.stack((x[parent].mean(), y[parent].mean()))
@@ -47,29 +47,34 @@ def nucleate(labels, chamber, x, y, p):
     distance = torch.hypot(x - blob_center[0], y - blob_center[1])
     u = (1 / (1 + torch.exp((distance - p.nucleus_radius) / p.interface_width))) * chamber.allowed
     # Compact support prevents phase nucleation far from the seeded chamber.
-    u[distance > p.nucleus_radius + NUCLEUS_CUTOFF_WIDTHS*p.interface_width] = 0.0
+    u[distance > p.nucleus_radius + q.nucleus_cutoff_widths*p.interface_width] = 0.0
     u[chamber.aperture] = 1.0
     return u
 
 
-def adhesion_field(occupied, p):
+def adhesion_field(occupied, p: ColonyParameters, q: ImplementationParameters):
     """Attraction that decays with distance from any existing chamber.
 
-    Zero beyond ADHESION_CUTOFF_RANGES adhesion ranges.
+    Zero beyond q.adhesion_cutoff_ranges adhesion ranges.
     """
-    distance = distance_to(occupied, p.spacing, ADHESION_CUTOFF_RANGES * p.adhesion_range)
+    distance = distance_to(
+        occupied,
+        q.spacing,
+        q.adhesion_cutoff_ranges * p.adhesion_range,
+        q.torch_dtype,
+    )
     return p.adhesion_strength * torch.exp(-distance / p.adhesion_range)
 
 
-def double_well_coefficient(p):
+def double_well_coefficient(p: ColonyParameters):
     return 2 * p.curvature_coefficient / p.interface_width**2
 
 
-def reaction(u, adhesion, p):
+def reaction(u, adhesion, p: ColonyParameters):
     """The non-diffusive part of du/dt: the double well plus adhesion."""
     return u * (1 - u) * (double_well_coefficient(p) * (u - 0.5) + adhesion)
 
 
-def reaction_rate_bound(p):
+def reaction_rate_bound(p: ColonyParameters):
     """Upper bound on |d reaction / du| over u in [0, 1], for the explicit time-step limit."""
     return 3 * double_well_coefficient(p) + p.adhesion_strength

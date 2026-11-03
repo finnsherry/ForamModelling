@@ -1,6 +1,7 @@
 """Command line: python -m foram_colony --seed-mode bilocular
 
-Every field of ColonyParameters is an option, e.g. --new-chambers 3 or --adhesion-strength 0.
+Every field of ColonyParameters and ImplementationParameters is an option, e.g.
+--new-chambers 3, --adhesion-strength 0 or --grid-points 353.
 """
 import argparse
 import ast
@@ -9,8 +10,9 @@ import json
 from dataclasses import fields
 from itertools import pairwise
 from pathlib import Path
+from typing import Literal, get_args, get_origin
 
-from .parameters import ColonyParameters, SEED_STYLES
+from .parameters import ColonyParameters, ImplementationParameters
 from .colony import simulate_colony
 from .output import save_colony, render_colony
 
@@ -19,7 +21,8 @@ def field_docs(cls):
     """The docstring under each field of dataclass cls, by field name.
 
     Python keeps no record of these attribute docstrings at run time (unlike
-    function docstrings), so they are read from the source.
+    function docstrings), so they are read from the source. "%" is escaped, as
+    argparse treats help text as a format string.
     """
     body = ast.parse(inspect.getsource(cls)).body[0].body
     docs = {}
@@ -30,7 +33,7 @@ def field_docs(cls):
             and isinstance(following.value, ast.Constant)
             and isinstance(following.value.value, str)
         ):
-            docs[statement.target.id] = inspect.cleandoc(following.value.value)
+            docs[statement.target.id] = inspect.cleandoc(following.value.value).replace("%", "%%")
     return docs
 
 
@@ -48,20 +51,25 @@ def main():
         help="Write the growth animation (chamber_growth.gif)",
     )
 
-    docs = field_docs(ColonyParameters)
-    for f in fields(ColonyParameters):
-        flag = "--" + f.name.replace("_", "-")
-        if f.name == "seed_mode":
-            parser.add_argument(flag, choices=sorted(SEED_STYLES), default=f.default, help=docs[f.name])
-        elif f.name == "chamber_areas":
-            parser.add_argument(flag, type=float, nargs="+", help=docs[f.name])
-        else:
-            parser.add_argument(flag, type=type(f.default), default=f.default, help=docs[f.name])
+    for cls in (ColonyParameters, ImplementationParameters):
+        group = parser.add_argument_group(cls.__name__)
+        docs = field_docs(cls)
+        for f in fields(cls):
+            flag = "--" + f.name.replace("_", "-")
+            if get_origin(f.type) is Literal:
+                group.add_argument(flag, choices=get_args(f.type), default=f.default, help=docs[f.name])
+            elif f.name == "chamber_areas":
+                group.add_argument(flag, type=float, nargs="+", help=docs[f.name])
+            else:
+                group.add_argument(flag, type=type(f.default), default=f.default, help=docs[f.name])
     args = parser.parse_args()
 
-    p = ColonyParameters(**{f.name: getattr(args, f.name) for f in fields(ColonyParameters)})
+    p, q = (
+        cls(**{f.name: getattr(args, f.name) for f in fields(cls)})
+        for cls in (ColonyParameters, ImplementationParameters)
+    )
     output = args.output or Path("output") / p.seed_mode
-    result = simulate_colony(p, device=args.device)
+    result = simulate_colony(p, q, device=args.device)
     metrics = save_colony(result, output)
     render_colony(result, output, animation=args.animation)
     print(json.dumps(metrics, indent=2))

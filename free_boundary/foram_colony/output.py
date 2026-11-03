@@ -31,6 +31,7 @@ def save_colony(result, output):
 
     metrics = {
         "parameters": asdict(p),
+        "implementation": asdict(result["implementation"]),
         "max_diffuse_area_error_all_steps": result["max_diffuse_area_error_all_steps"],
         "seed_reports": result["seed_reports"],
         "reports": result["reports"],
@@ -63,7 +64,8 @@ def render_colony(result, output, animation=True):
     seed_chambers = len(result["seed_reports"])
     seed_name = f"{p.seed_mode.capitalize()} seed"
     total_chambers = p.new_chambers + seed_chambers
-    extent = [coords[0] - p.spacing/2, coords[-1] + p.spacing/2] * 2
+    h = result["implementation"].spacing
+    extent = [coords[0] - h/2, coords[-1] + h/2] * 2
 
     # One colour per chamber, with white for the background.
     colors = [plt.cm.viridis(v) for v in np.linspace(0.08, 0.92, total_chambers)]
@@ -85,8 +87,8 @@ def render_colony(result, output, animation=True):
 
     # The colony figures are zoomed to the final colony plus a border.
     where = np.argwhere(result["labels"] > 0)
-    lo = coords[where.min(axis=0)] - 0.25
-    hi = coords[where.max(axis=0)] + 0.25
+    lo = coords[where.min(axis=0)] - 0.1
+    hi = coords[where.max(axis=0)] + 0.1
 
     def setup(ax):
         ax.set(xlim=(lo[1], hi[1]), ylim=(lo[0], hi[0]), xlabel="x", ylabel="y")

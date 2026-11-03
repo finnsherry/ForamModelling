@@ -7,8 +7,15 @@ README.md describes the modules.
 
 Run: python -m foram_colony --seed-mode bilocular   (writes output/bilocular/)
 """
-from .parameters import ColonyParameters, SEED_STYLES
+from .parameters import ColonyParameters, ImplementationParameters, SEED_STYLES
 from .colony import simulate_colony
 from .output import save_colony, render_colony
 
-__all__ = ["ColonyParameters", "SEED_STYLES", "simulate_colony", "save_colony", "render_colony"]
+__all__ = [
+    "ColonyParameters",
+    "ImplementationParameters",
+    "SEED_STYLES",
+    "simulate_colony",
+    "save_colony",
+    "render_colony",
+]

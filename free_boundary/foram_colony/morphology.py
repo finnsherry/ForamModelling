@@ -6,8 +6,6 @@ from typing import Literal
 import torch
 import torch.nn.functional as F
 
-from .parameters import DTYPE, FLOOD_CHECK_EVERY
-
 
 def _dilate_along(mask, dim):
     """OR each pixel with its two neighbours along dim."""
@@ -31,19 +29,19 @@ def dilate(mask, kernel: Literal["cross", "square"]="cross"):
     return rows | columns
 
 
-def component_containing(mask, index, kernel: Literal["cross", "square"]="cross"):
+def component_containing(mask, index, kernel: Literal["cross", "square"]="cross", check_every=8):
     """The connected part of mask that contains pixel `index`, by flood fill.
 
     Grows the region by dilation inside mask until it stops growing. The region
     only grows, so comparing pixel counts detects that; counting only every
-    FLOOD_CHECK_EVERY dilations saves device syncs, and the extra dilations after
+    check_every dilations saves device syncs, and the extra dilations after
     convergence change nothing.
     """
     region = torch.zeros_like(mask)
     region[index] = mask[index]
     count = int(region.sum())
     while True:
-        for _ in range(FLOOD_CHECK_EVERY):
+        for _ in range(check_every):
             region = dilate(region, kernel) & mask
         grown = int(region.sum())
         if grown == count:
@@ -60,10 +58,10 @@ def is_connected(mask):
     return int(component_containing(mask, first).sum()) == len(pixels)
 
 
-def distance_to(mask, h, max_distance):
+def distance_to(mask, h, max_distance, dtype):
     """Euclidean distance from every pixel to the nearest True pixel of mask, up to max_distance."""
     R = math.ceil(max_distance / h)
-    d2 = torch.full(mask.shape, math.inf, dtype=DTYPE, device=mask.device).masked_fill(mask, 0.0)
+    d2 = torch.full(mask.shape, math.inf, dtype=dtype, device=mask.device).masked_fill(mask, 0.0)
     # Separable: the squared distance along the rows, then along the columns.
     for dim in (0, 1):
         n = d2.shape[dim]

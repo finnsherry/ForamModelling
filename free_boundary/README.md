@@ -48,8 +48,9 @@ result = simulate_colony(parameters, device="cuda")
 python -m foram_colony --device cuda
 ```
 
-The default is `device="cpu"`. All computation is in float32 (`DTYPE` in
-`parameters.py`). CPU and GPU round differently, so their colonies can differ by a few pixels.
+The default is `device="cpu"`. All computation is in float32 by default (the
+`dtype` of `ImplementationParameters`). CPU and GPU round differently, so their
+colonies can differ by a few pixels.
 
 A GPU pays off on fine grids. On the default 177×177 grid, per-step overhead
 dominates and the CPU is nearly as fast.
@@ -58,8 +59,8 @@ dominates and the CPU is nearly as fast.
 
 The `foram_colony/` package:
 
-- `parameters.py`: `ColonyParameters` (validated when created), the numerical
-  constants, and the per-seed-mode labels and colours.
+- `parameters.py`: `ColonyParameters` and `ImplementationParameters` (both
+  validated when created), and the per-seed-mode labels and colours.
 - `layout.py`: the initial seed, and where each new chamber attaches.
 - `growth.py`: how one chamber grows, i.e. the reaction term (double well plus
   adhesion), the adhesion field, the nucleus and the target-area curve.
@@ -103,8 +104,7 @@ Compartment 2 is the part of its own disc that lies outside compartment 1. So
 the interiors don't overlap, and the shared interface connects the two. The
 second compartment is usually crescent-like rather than a full disc, so the
 radius ratio is **not** an area ratio. The actual compartment areas are
-reported in `validation.json`. With the defaults they are 0.140625 and
-0.125625.
+reported in `validation.json`. With the defaults they are 0.0291 and 0.0260.
 
 `seed_separation_fraction` must be between zero and one. Extreme separations or
 radius ratios can leave a compartment missing or under-resolved, and the code
@@ -115,7 +115,7 @@ connection between them.
 ```python
 parameters = ColonyParameters(
     seed_mode="bilocular",
-    central_radius=0.21,
+    central_radius=0.0955,
     second_piece_radius_ratio=1.10,
     seed_separation_fraction=0.60,
     new_chambers=6,
@@ -155,21 +155,19 @@ origin, at angle `i * turning_angle_degrees` counterclockwise from the +x axis.
 ```bash
 python -m foram_colony --new-chambers 6 --adhesion-strength 2.5 --turning-angle-degrees 65
 python -m foram_colony --adhesion-strength 0.0 --output output/no_adhesion
-python -m foram_colony --spacing 0.02 --output output/finer_grid
 ```
 
 ```python
 parameters = ColonyParameters(
     seed_mode="unilocular",
     new_chambers=6,
-    central_radius=0.30,
-    first_chamber_area=0.28,
+    central_radius=0.136,
+    first_chamber_area=0.0579,
     chamber_area_ratio=1.16,
     turning_angle_degrees=65.0,
     adhesion_strength=2.5,
-    adhesion_range=0.14,
-    aperture_radius=0.075,
-    spacing=0.025,
+    adhesion_range=0.0636,
+    aperture_radius=0.0341,
 )
 ```
 
@@ -180,25 +178,39 @@ parameters = ColonyParameters(
   arrangement.
 - `chamber_area_ratio` sets the growth in completed chamber size from one
   chamber to the next.
+- Lengths are in units of the grid's half-width: the grid always covers
+  [-1, 1] in x and in y.
 - Time is measured in formation times: each chamber grows over one time unit,
   so chamber i forms between global times i and i + 1. Its area follows an
   illustrative normalized sigmoid with rate `growth_rate`, centred at
   `growth_midpoint_fraction`.
 - Each new chamber starts as a soft disc of `nucleus_radius`, centred
-  `nucleus_offset` outward from its aperture. It is cut off 4.75 interface
-  widths beyond its radius, where its profile is below 0.9%.
+  `nucleus_offset` outward from its aperture. It is cut off
+  `nucleus_cutoff_widths` (4.75) interface widths beyond its radius, where its
+  profile is below 0.9%.
 
-Numerical settings that don't define the model (precision, tolerances, the
-time-stepping window) are constants at the top of `parameters.py`.
+Numerical settings that don't define the model (the number of grid points,
+precision, tolerances, the time-stepping window, cutoffs) are the fields of
+`ImplementationParameters`. They are passed separately, and are options of the
+command line too:
+
+```python
+from foram_colony import ImplementationParameters
+result = simulate_colony(parameters, ImplementationParameters(grid_points=353))
+```
+
+```bash
+python -m foram_colony --grid-points 353 --output output/finer_grid
+```
 
 ## Specified final chamber sizes
 
 ```bash
-python -m foram_colony --new-chambers 3 --chamber-areas 0.30 0.39 0.48
+python -m foram_colony --new-chambers 3 --chamber-areas 0.062 0.081 0.099
 ```
 
 ```python
-result = simulate_colony(ColonyParameters(new_chambers=3, chamber_areas=(0.30, 0.39, 0.48)))
+result = simulate_colony(ColonyParameters(new_chambers=3, chamber_areas=(0.062, 0.081, 0.099)))
 ```
 
 These are the areas of the NEW chambers only. Each must be larger than its
@@ -213,10 +225,11 @@ give within-chamber formation times, which stay illustrative here.
 
 ## Numerical model
 
-The domain is a square grid of spacing `spacing`. Each new chamber is
-represented by a phase field u(x,y,t) in [0, 1]: a smoothed indicator that is
-about 1 inside the growing chamber and about 0 outside. On the space outside
-existing chambers, the provisional evolution is
+The domain is the square [-1, 1]^2, sampled at `grid_points` points per side
+(177 by default), so the grid spacing is h = 2/(grid_points - 1). Each new
+chamber is represented by a phase field u(x,y,t) in [0, 1]: a smoothed
+indicator that is about 1 inside the growing chamber and about 0 outside. On
+the space outside existing chambers, the provisional evolution is
 
     u_t = gamma Laplacian(u)
           + (2 gamma/ell^2) u(1-u)(u-1/2)
@@ -226,19 +239,22 @@ existing chambers, the provisional evolution is
 where gamma is `curvature_coefficient` and ell is `interface_width`. The first
 two terms are the Allen–Cahn equation, which moves the interface approximately
 by curvature. d_old is the distance to any previously completed chamber. It is
-computed exactly up to 5 adhesion ranges; beyond that the adhesion term is set
+computed exactly up to `adhesion_cutoff_ranges` (5) adhesion ranges; beyond that the adhesion term is set
 to zero, since it has already fallen below 0.7% of its value at the wall. The
 positive adhesion term raises the local drive near old walls.
 The scalar lambda is applied as a numerical correction after each time step, so
 that
 
-    spacing^2 * sum(u) = prescribed_area(t).
+    h^2 * sum(u) = prescribed_area(t).
 
 u = 0 inside earlier chambers and at the outer computational edge. u = 1 on the
 chosen aperture patch, just outside the parent wall. These values are held
 fixed while the current chamber grows. A compactly supported initial seed
-prevents spontaneous nucleation far away. Time stepping is explicit, with a
-timestep cap set by the diffusive and reaction stability limits.
+prevents spontaneous nucleation far away. The Laplacian is the nine-point
+stencil [[1, 4, 1], [4, -20, 4], [1, 4, 1]] / (6 h^2), whose leading
+error term is rotation invariant, so interfaces move nearly alike in every
+direction on the grid. Time stepping is explicit, with a timestep cap set by
+the diffusive and reaction stability limits.
 Each step is computed only on a window around the growing chamber, refitted at
 every snapshot, with a margin wide enough that u stays negligible at its
 border. If u does reach the border, the run stops with an error.
@@ -248,7 +264,7 @@ up to the nearest achievable pixel area (aperture included). Thus:
 
 - the diffuse area is enforced to floating-point tolerance;
 - the frozen/displayed area differs from the requested value by at most
-  spacing^2/2 (0.0003125 on the default grid);
+  h^2/2 (6.5e-5 on the default grid);
 - every frozen chamber is checked for 4-neighbour connectedness;
 - each frozen chamber touches its parent by construction, as it contains the aperture;
 - older labels are immobile by construction: a new chamber can only claim
@@ -262,8 +278,8 @@ up to the nearest achievable pixel area (aperture included). Thus:
 
 - `area_history.csv`: chamber, local and global time, target, diffuse
   and frozen pixel area at each snapshot.
-- `validation.json`: parameters, seed and per-chamber reports, and area
-  errors.
+- `validation.json`: both sets of parameters, seed and per-chamber reports,
+  and area errors.
 - `simulation.npz`: final and initial label grids, coordinates and
   history.
 
