@@ -1,7 +1,7 @@
 """Command line: python -m foram_colony --seed-mode bilocular
 
 Every field of ColonyParameters and ImplementationParameters is an option, e.g.
---new-chambers 3, --adhesion-strength 0 or --grid-points 353.
+--new-chambers 3, --adhesion-speed 0 or --grid-points 353.
 """
 import argparse
 import ast

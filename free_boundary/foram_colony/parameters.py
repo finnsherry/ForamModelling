@@ -16,7 +16,7 @@ class ColonyParameters:
     """
 
     new_chambers: int = 6
-    """Number of chambers grown after the seed."""
+    """Number of chambers grown after the seed, unless chamber_areas is given."""
 
     central_radius: float = 0.0955
     """Radius of the unilocular seed disc, or of the first bilocular generating disc."""
@@ -37,29 +37,25 @@ class ColonyParameters:
     """Final area of each new chamber relative to the previous one, unless chamber_areas is given."""
 
     chamber_areas: tuple[float, ...] | None = None
-    """Final area of each new chamber, one per new chamber. Overrides first_chamber_area
-    and chamber_area_ratio."""
+    """Final area of each new chamber, in formation order. Overrides new_chambers,
+    first_chamber_area and chamber_area_ratio."""
 
     turning_angle_degrees: float = 65.0
     """Angle by which the aperture guide point turns from one new chamber to the next."""
 
     curvature_coefficient: float = 0.00155
-    """Diffusion coefficient of the phase field; sets how strongly curvature is smoothed."""
+    """Diffusion coefficient of the phase field. A boundary of curvature kappa moves
+    inward at curvature_coefficient * kappa."""
 
-    interface_width: float = 0.0182
-    """Width of the diffuse chamber interface."""
-
-    adhesion_strength: float = 2.5
-    """Strength of the attraction towards existing chambers; 0 turns it off."""
+    adhesion_speed: float = 0.0455
+    """Speed at which the attraction pushes a boundary towards an existing chamber's wall,
+    at the wall; 0 turns it off."""
 
     adhesion_range: float = 0.0636
     """Decay length of the adhesion with distance from existing chambers."""
 
     aperture_radius: float = 0.0341
     """Radius of the aperture, the patch of parent wall a new chamber grows from."""
-
-    snapshots_per_chamber: int = 18
-    """Frames recorded per chamber, including its nucleus."""
 
     guide_start_radius: float = 0.25
     """The aperture of new chamber i (from 0) is the exposed parent wall nearest a guide
@@ -89,7 +85,6 @@ class ColonyParameters:
             self.first_chamber_area,
             self.chamber_area_ratio,
             self.curvature_coefficient,
-            self.interface_width,
             self.adhesion_range,
             self.aperture_radius,
             self.second_piece_radius_ratio,
@@ -111,18 +106,15 @@ class ColonyParameters:
                 "Guide increment, nucleus offset and growth midpoint must be nonnegative and finite."
             )
 
-        if self.new_chambers < 1 or self.snapshots_per_chamber < 2 or self.adhesion_strength < 0:
-            raise ValueError("Invalid chamber count, snapshot count or adhesion strength.")
+        if self.new_chambers < 1 or self.adhesion_speed < 0:
+            raise ValueError("new_chambers must be at least 1 and adhesion_speed nonnegative.")
         if self.seed_mode == "bilocular" and self.seed_separation_fraction >= 1:
             raise ValueError("Bilocular generating discs must overlap: seed_separation_fraction < 1.")
 
         if self.chamber_areas is not None:
             self.chamber_areas = tuple(float(a) for a in self.chamber_areas)
-            if (
-                len(self.chamber_areas) != self.new_chambers
-                or not all(math.isfinite(a) and a > 0 for a in self.chamber_areas)
-            ):
-                raise ValueError("chamber_areas needs one finite positive area per new chamber.")
+            if not self.chamber_areas or not all(math.isfinite(a) and a > 0 for a in self.chamber_areas):
+                raise ValueError("chamber_areas needs at least one area, all finite and positive.")
 
     def final_areas(self):
         """The final area of each new chamber, in formation order."""
@@ -141,6 +133,13 @@ class ImplementationParameters:
 
     grid_points: int = 177
     """Grid samples per side; the grid covers [-1, 1] in x and in y."""
+
+    interface_width_factor: float = 1.5
+    """Width of the diffuse chamber interface, in grid spacings. The model is the limit
+    of a vanishing width, so refining the grid converges towards it."""
+
+    snapshots_per_chamber: int = 18
+    """Frames recorded per chamber, including its nucleus."""
 
     dtype: Literal["float32", "float64"] = "float32"
     """Precision of every floating-point tensor in the simulation."""
@@ -176,9 +175,18 @@ class ImplementationParameters:
     """Fewest pixels a seed compartment may have and still count as resolved."""
 
     def __post_init__(self):
-        if self.grid_points < 3 or self.newton_steps < 1 or self.min_seed_pixels < 1:
-            raise ValueError("grid_points must be at least 3, newton_steps and min_seed_pixels at least 1.")
+        if (
+            self.grid_points < 3
+            or self.snapshots_per_chamber < 2
+            or self.newton_steps < 1
+            or self.min_seed_pixels < 1
+        ):
+            raise ValueError(
+                "grid_points must be at least 3, snapshots_per_chamber at least 2, "
+                "newton_steps and min_seed_pixels at least 1."
+            )
         positive = [
+            self.interface_width_factor,
             self.window_tail,
             self.window_margin,
             self.window_spill,
@@ -187,11 +195,15 @@ class ImplementationParameters:
             self.nucleus_cutoff_widths,
         ]
         if not all(math.isfinite(v) and v > 0 for v in positive):
-            raise ValueError("Window, tolerance and cutoff settings must be positive and finite.")
+            raise ValueError("Interface width, window, tolerance and cutoff settings must be positive and finite.")
 
     @property
     def spacing(self):
         return 2 / (self.grid_points - 1)
+
+    @property
+    def interface_width(self):
+        return self.interface_width_factor * self.spacing
 
     @property
     def torch_dtype(self):

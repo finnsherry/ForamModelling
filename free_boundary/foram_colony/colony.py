@@ -71,18 +71,18 @@ def grow(
         )
     target = target_area(seed_area, final_area, p)
     adhesion = adhesion_field(labels > 0, p, q)
-    n = p.snapshots_per_chamber - 1
+    n = q.snapshots_per_chamber - 1
 
     u, steps, max_error = integrate(
         u,
         chamber.allowed,
         chamber.aperture,
         diffusion=p.curvature_coefficient,
-        reaction=lambda u, window: reaction(u, adhesion[window], p),
+        reaction=lambda u, window: reaction(u, adhesion[window], p, q),
         target=target,
         save_times=[i / n for i in range(1, n + 1)],
-        dt_max=stable_dt(h, p.curvature_coefficient, reaction_rate_bound(p)),
-        margin=math.ceil(q.window_margin * p.interface_width / h),
+        dt_max=stable_dt(h, p.curvature_coefficient, reaction_rate_bound(p, q)),
+        margin=math.ceil(q.window_margin * q.interface_width / h),
         q=q,
         on_snapshot=lambda u, t: snapshot(result, labels, chamber, u, t, target, start_time, h),
     )

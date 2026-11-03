@@ -17,8 +17,9 @@ python -m foram_colony --seed-mode unilocular   # writes output/unilocular/
 ```
 
 Results go to `output/<seed-mode>/` unless `--output` is given. Every field of
-`ColonyParameters` is a command-line option (`--new-chambers`,
-`--adhesion-strength`, ...); `python -m foram_colony --help` lists them all.
+`ColonyParameters` and `ImplementationParameters` is a command-line option
+(`--new-chambers`, `--adhesion-speed`, `--grid-points`, ...);
+`python -m foram_colony --help` lists them all.
 
 Or open `Foraminiferal_Chamber_Growth.ipynb` and run its cells. The notebook
 imports the `foram_colony` package from the same folder. A default run takes a few
@@ -76,7 +77,8 @@ The `foram_colony/` package:
 
 `seed_mode` selects the fixed initial structure. `new_chambers` and any
 supplied `chamber_areas` count only the chambers grown afterwards, never the
-seed compartments.
+seed compartments. If `chamber_areas` is given, its length sets the number of
+new chambers and `new_chambers` is ignored.
 
 ### Bilocular seed (default)
 
@@ -153,8 +155,8 @@ origin, at angle `i * turning_angle_degrees` counterclockwise from the +x axis.
 ## Parameters
 
 ```bash
-python -m foram_colony --new-chambers 6 --adhesion-strength 2.5 --turning-angle-degrees 65
-python -m foram_colony --adhesion-strength 0.0 --output output/no_adhesion
+python -m foram_colony --new-chambers 6 --adhesion-speed 0.0455 --turning-angle-degrees 65
+python -m foram_colony --adhesion-speed 0.0 --output output/no_adhesion
 ```
 
 ```python
@@ -165,14 +167,17 @@ parameters = ColonyParameters(
     first_chamber_area=0.0579,
     chamber_area_ratio=1.16,
     turning_angle_degrees=65.0,
-    adhesion_strength=2.5,
+    adhesion_speed=0.0455,
     adhesion_range=0.0636,
     aperture_radius=0.0341,
 )
 ```
 
-- `adhesion_strength` sets how strongly growth is drawn towards old walls. Zero
-  switches off the attraction but keeps the mandatory parent attachment.
+- `adhesion_speed` sets how strongly growth is drawn towards old walls: the
+  speed it adds to a boundary at an old wall. Zero switches off the attraction
+  but keeps the mandatory parent attachment.
+- `curvature_coefficient` sets how fast curved boundaries straighten: a
+  boundary of curvature kappa moves at `curvature_coefficient` * kappa.
 - `adhesion_range` sets the distance scale of the attraction.
 - `turning_angle_degrees` changes aperture placement and therefore the coiling
   arrangement.
@@ -189,10 +194,13 @@ parameters = ColonyParameters(
   `nucleus_cutoff_widths` (4.75) interface widths beyond its radius, where its
   profile is below 0.9%.
 
-Numerical settings that don't define the model (the number of grid points,
-precision, tolerances, the time-stepping window, cutoffs) are the fields of
-`ImplementationParameters`. They are passed separately, and are options of the
-command line too:
+Numerical settings that don't define the model (the number of grid points, the
+interface width, the number of snapshots, precision, tolerances, the
+time-stepping window, cutoffs) are the fields of `ImplementationParameters`.
+The interface width is `interface_width_factor` (1.5) grid spacings, so
+`grid_points` alone sets the resolution: refining the grid sharpens the
+interface and converges towards the model. They are passed separately, and are
+options of the command line too:
 
 ```python
 from foram_colony import ImplementationParameters
@@ -206,11 +214,11 @@ python -m foram_colony --grid-points 353 --output output/finer_grid
 ## Specified final chamber sizes
 
 ```bash
-python -m foram_colony --new-chambers 3 --chamber-areas 0.062 0.081 0.099
+python -m foram_colony --chamber-areas 0.062 0.081 0.099
 ```
 
 ```python
-result = simulate_colony(ColonyParameters(new_chambers=3, chamber_areas=(0.062, 0.081, 0.099)))
+result = simulate_colony(ColonyParameters(chamber_areas=(0.062, 0.081, 0.099)))
 ```
 
 These are the areas of the NEW chambers only. Each must be larger than its
@@ -233,15 +241,21 @@ the space outside existing chambers, the provisional evolution is
 
     u_t = gamma Laplacian(u)
           + (2 gamma/ell^2) u(1-u)(u-1/2)
-          + adhesion_strength exp(-d_old/adhesion_range) u(1-u)
+          + (adhesion_speed/ell) exp(-d_old/adhesion_range) u(1-u)
           + lambda(t) u(1-u),
 
-where gamma is `curvature_coefficient` and ell is `interface_width`. The first
+where gamma is `curvature_coefficient` and ell is the interface width,
+`interface_width_factor` * h. The first
 two terms are the Allen–Cahn equation, which moves the interface approximately
-by curvature. d_old is the distance to any previously completed chamber. It is
-computed exactly up to `adhesion_cutoff_ranges` (5) adhesion ranges; beyond that the adhesion term is set
-to zero, since it has already fallen below 0.7% of its value at the wall. The
-positive adhesion term raises the local drive near old walls.
+by curvature, at gamma * kappa. A forcing g u(1-u) moves the interface at speed
+g ell, so the adhesion moves it at adhesion_speed exp(-d_old/adhesion_range).
+Both speeds are independent of ell: the model is the limit of vanishing
+interface width, and ell, like the grid, is a numerical resolution. d_old is
+the distance to any previously completed chamber. It is
+computed exactly up to `adhesion_cutoff_ranges` (5) adhesion ranges; beyond
+that the adhesion term is set to zero, since it has already fallen below 0.7%
+of its value at the wall. The positive adhesion term raises the local drive
+near old walls.
 The scalar lambda is applied as a numerical correction after each time step, so
 that
 

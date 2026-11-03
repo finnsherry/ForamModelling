@@ -63,7 +63,7 @@ def render_colony(result, output, animation=True):
     coords = result["coordinates"]
     seed_chambers = len(result["seed_reports"])
     seed_name = f"{p.seed_mode.capitalize()} seed"
-    total_chambers = p.new_chambers + seed_chambers
+    total_chambers = len(p.final_areas()) + seed_chambers
     h = result["implementation"].spacing
     extent = [coords[0] - h/2, coords[-1] + h/2] * 2
 

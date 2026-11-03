@@ -4,10 +4,15 @@ The phase field u of the growing chamber evolves as
 
     u_t = gamma Laplacian(u) + reaction(u),
     reaction(u) = k u(1-u)(u-1/2) + adhesion u(1-u),     k = 2 gamma / ell^2,
+    adhesion = (a / ell) exp(-d/R),
 
-subject to h^2 sum(u) = target_area(t). gamma is p.curvature_coefficient and
-ell is p.interface_width. The Laplacian, the area constraint and the time
-stepping are in solver.py; this module supplies the model-specific pieces.
+subject to h^2 sum(u) = target_area(t). gamma is p.curvature_coefficient, a
+p.adhesion_speed, R p.adhesion_range, d the distance to existing chambers and
+ell q.interface_width. A forcing g u(1-u) moves the interface at speed g ell,
+so as ell -> 0 the boundary moves at gamma * curvature + a exp(-d/R) plus the
+area correction, independent of ell. The Laplacian, the area constraint and
+the time stepping are in solver.py; this module supplies the model-specific
+pieces.
 """
 
 import math
@@ -45,9 +50,9 @@ def nucleate(labels, chamber, x, y, p: ColonyParameters, q: ImplementationParame
     blob_center = anchor + p.nucleus_offset*outward
 
     distance = torch.hypot(x - blob_center[0], y - blob_center[1])
-    u = (1 / (1 + torch.exp((distance - p.nucleus_radius) / p.interface_width))) * chamber.allowed
+    u = (1 / (1 + torch.exp((distance - p.nucleus_radius) / q.interface_width))) * chamber.allowed
     # Compact support prevents phase nucleation far from the seeded chamber.
-    u[distance > p.nucleus_radius + q.nucleus_cutoff_widths*p.interface_width] = 0.0
+    u[distance > p.nucleus_radius + q.nucleus_cutoff_widths*q.interface_width] = 0.0
     u[chamber.aperture] = 1.0
     return u
 
@@ -63,18 +68,23 @@ def adhesion_field(occupied, p: ColonyParameters, q: ImplementationParameters):
         q.adhesion_cutoff_ranges * p.adhesion_range,
         q.torch_dtype,
     )
-    return p.adhesion_strength * torch.exp(-distance / p.adhesion_range)
+    return adhesion_coefficient(p, q) * torch.exp(-distance / p.adhesion_range)
 
 
-def double_well_coefficient(p: ColonyParameters):
-    return 2 * p.curvature_coefficient / p.interface_width**2
+def adhesion_coefficient(p: ColonyParameters, q: ImplementationParameters):
+    """The adhesion forcing at the wall that moves the interface at p.adhesion_speed."""
+    return p.adhesion_speed / q.interface_width
 
 
-def reaction(u, adhesion, p: ColonyParameters):
+def double_well_coefficient(p: ColonyParameters, q: ImplementationParameters):
+    return 2 * p.curvature_coefficient / q.interface_width**2
+
+
+def reaction(u, adhesion, p: ColonyParameters, q: ImplementationParameters):
     """The non-diffusive part of du/dt: the double well plus adhesion."""
-    return u * (1 - u) * (double_well_coefficient(p) * (u - 0.5) + adhesion)
+    return u * (1 - u) * (double_well_coefficient(p, q) * (u - 0.5) + adhesion)
 
 
-def reaction_rate_bound(p: ColonyParameters):
+def reaction_rate_bound(p: ColonyParameters, q: ImplementationParameters):
     """Upper bound on |d reaction / du| over u in [0, 1], for the explicit time-step limit."""
-    return 3 * double_well_coefficient(p) + p.adhesion_strength
+    return 3 * double_well_coefficient(p, q) + adhesion_coefficient(p, q)
