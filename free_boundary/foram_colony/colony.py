@@ -4,8 +4,6 @@ Everything runs as torch tensors on `device`, in the dtype of the
 ImplementationParameters. Only what is recorded for output is converted to numpy.
 """
 
-import math
-
 import numpy as np
 import torch
 
@@ -82,7 +80,6 @@ def grow(
         target=target,
         save_times=[i / n for i in range(1, n + 1)],
         dt_max=stable_dt(h, p.curvature_coefficient, reaction_rate_bound(p, q)),
-        margin=math.ceil(q.window_margin * q.interface_width / h),
         q=q,
         on_snapshot=lambda u, t: snapshot(result, labels, chamber, u, t, target, start_time, h),
     )
@@ -135,11 +132,7 @@ def simulate_colony(
     implementation: ImplementationParameters | None = None,
     device="cpu",
 ):
-    """Grow the colony on `device` (e.g. "cuda").
-
-    parameters is a ColonyParameters and implementation an
-    ImplementationParameters; None means the defaults.
-    """
+    """Grow the colony on `device` (e.g. "cuda"); None parameters mean the defaults."""
     p = parameters or ColonyParameters()
     q = implementation or ImplementationParameters()
     n = q.grid_points

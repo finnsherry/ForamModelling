@@ -1,8 +1,33 @@
+"""The parameters of a run: the model (ColonyParameters) and its numerics (ImplementationParameters).
+
+The docstring under each field documents it, and is the help text of its
+command-line option.
+"""
+
 import math
 from dataclasses import dataclass
 from typing import Literal
 
 import torch
+
+# Per seed mode: the names of the seed compartments, and their plot colours
+# (None: use the same colour scale as the later chambers).
+SEED_STYLES = {
+    "unilocular": {
+        "names": [
+            "Initial chamber (proloculus)",
+        ],
+        "colors": None,
+    },
+    "bilocular": {
+        "names": [
+            "Initial chamber (proloculus/protoconch)",
+            "Second chamber (deuteroloculus/deuteroconch)",
+        ],
+        "colors": ["#553b83", "#a25db3"],
+    },
+}
+
 
 @dataclass
 class ColonyParameters:
@@ -10,25 +35,22 @@ class ColonyParameters:
 
     Lengths are in units of the grid's half-width: the grid covers [-1, 1] in x
     and in y. Times are in formation times: each chamber grows over one time unit.
-
-    The docstring under each field documents it, and is the help text of its
-    command-line option.
     """
-
-    new_chambers: int = 6
-    """Number of chambers grown after the seed, unless chamber_areas is given."""
-
-    central_radius: float = 0.0955
-    """Radius of the unilocular seed disc, or of the first bilocular generating disc."""
 
     seed_mode: Literal["unilocular", "bilocular"] = "bilocular"
     """unilocular: the seed is one disc. bilocular: two adjacent compartments."""
 
-    second_piece_radius_ratio: float = 1.10
+    seed_radius: float = 0.0955
+    """Radius of the unilocular seed disc, or of the first bilocular generating disc."""
+
+    second_disc_radius_ratio: float = 1.10
     """Bilocular: radius of the second generating disc relative to the first."""
 
     seed_separation_fraction: float = 0.60
     """Bilocular: distance between the disc centres, as a fraction of the sum of their radii (< 1)."""
+
+    new_chambers: int = 6
+    """Number of chambers grown after the seed, unless chamber_areas is given."""
 
     first_chamber_area: float = 0.0579
     """Final area of the first new chamber, unless chamber_areas is given."""
@@ -40,8 +62,11 @@ class ColonyParameters:
     """Final area of each new chamber, in formation order. Overrides new_chambers,
     first_chamber_area and chamber_area_ratio."""
 
-    turning_angle_degrees: float = 65.0
-    """Angle by which the aperture guide point turns from one new chamber to the next."""
+    growth_rate: float = 1.625
+    """Rate of the sigmoid in time that the target area follows."""
+
+    growth_midpoint: float = 0.48
+    """Time at the midpoint of the growth sigmoid, between 0 and the formation time 1."""
 
     curvature_coefficient: float = 0.00155
     """Diffusion coefficient of the phase field. A boundary of curvature kappa moves
@@ -54,8 +79,8 @@ class ColonyParameters:
     adhesion_range: float = 0.0636
     """Decay length of the adhesion with distance from existing chambers."""
 
-    aperture_radius: float = 0.0341
-    """Radius of the aperture, the patch of parent wall a new chamber grows from."""
+    turning_angle_degrees: float = 65.0
+    """Angle by which the aperture guide point turns from one new chamber to the next."""
 
     guide_start_radius: float = 0.25
     """The aperture of new chamber i (from 0) is the exposed parent wall nearest a guide
@@ -64,46 +89,43 @@ class ColonyParameters:
     guide_radius_increment: float = 0.0341
     """Increase of the guide point's distance from the origin per new chamber."""
 
+    aperture_radius: float = 0.0341
+    """Radius of the aperture, the patch of parent wall a new chamber grows from."""
+
     nucleus_offset: float = 0.0318
     """Distance of the nucleus centre outward from the aperture centre."""
 
     nucleus_radius: float = 0.0591
     """Radius of the soft disc a new chamber starts from."""
 
-    growth_rate: float = 1.625
-    """Rate of the sigmoid in time that the target area follows."""
-
-    growth_midpoint_fraction: float = 0.48
-    """Midpoint of the growth sigmoid, as a fraction of the formation time."""
-
     def __post_init__(self):
         if self.seed_mode not in SEED_STYLES:
             raise ValueError(f"seed_mode must be one of {sorted(SEED_STYLES)}.")
 
         positive = [
-            self.central_radius,
+            self.seed_radius,
+            self.second_disc_radius_ratio,
+            self.seed_separation_fraction,
             self.first_chamber_area,
             self.chamber_area_ratio,
+            self.growth_rate,
             self.curvature_coefficient,
             self.adhesion_range,
-            self.aperture_radius,
-            self.second_piece_radius_ratio,
-            self.seed_separation_fraction,
             self.guide_start_radius,
+            self.aperture_radius,
             self.nucleus_radius,
-            self.growth_rate,
         ]
         if not all(math.isfinite(v) and v > 0 for v in positive):
-            raise ValueError("Geometric, area and numerical scales must be positive and finite.")
+            raise ValueError("Lengths, areas, ratios and rates must be positive and finite.")
 
         nonnegative = [
+            self.growth_midpoint,
             self.guide_radius_increment,
             self.nucleus_offset,
-            self.growth_midpoint_fraction,
         ]
         if not all(math.isfinite(v) and v >= 0 for v in nonnegative):
             raise ValueError(
-                "Guide increment, nucleus offset and growth midpoint must be nonnegative and finite."
+                "Growth midpoint, guide increment and nucleus offset must be nonnegative and finite."
             )
 
         if self.new_chambers < 1 or self.adhesion_speed < 0:
@@ -125,11 +147,7 @@ class ColonyParameters:
 
 @dataclass
 class ImplementationParameters:
-    """Numerical settings that don't define the model; validated on creation.
-
-    The docstring under each field documents it, and is the help text of its
-    command-line option.
-    """
+    """Numerical settings that don't define the model; validated on creation."""
 
     grid_points: int = 177
     """Grid samples per side; the grid covers [-1, 1] in x and in y."""
@@ -208,22 +226,3 @@ class ImplementationParameters:
     @property
     def torch_dtype(self):
         return getattr(torch, self.dtype)
-
-
-# Per seed mode: the names of the seed compartments, and their plot colours
-# (None: use the same colour scale as the later chambers).
-SEED_STYLES = {
-    "unilocular": {
-        "names": [
-            "Initial chamber (proloculus)",
-        ],
-        "colors": None,
-    },
-    "bilocular": {
-        "names": [
-            "Initial chamber (proloculus/protoconch)",
-            "Second chamber (deuteroloculus/deuteroconch)",
-        ],
-        "colors": ["#553b83", "#a25db3"],
-    },
-}

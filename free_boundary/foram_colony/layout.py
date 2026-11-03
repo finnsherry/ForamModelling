@@ -29,10 +29,10 @@ def make_seed(p: ColonyParameters, q: ImplementationParameters, x, y):
     """
     labels = torch.zeros(x.shape, dtype=torch.int16, device=x.device)
     if p.seed_mode == "unilocular":
-        labels[torch.hypot(x, y) <= p.central_radius] = 1
+        labels[torch.hypot(x, y) <= p.seed_radius] = 1
     else:
-        r1 = p.central_radius
-        r2 = r1 * p.second_piece_radius_ratio
+        r1 = p.seed_radius
+        r2 = r1 * p.second_disc_radius_ratio
         distance = p.seed_separation_fraction * (r1 + r2)
         # The disc centres are at (-distance/2, 0) and (distance/2, 0).
         first = torch.hypot(x + 0.5*distance, y) <= r1
@@ -56,7 +56,7 @@ def make_seed(p: ColonyParameters, q: ImplementationParameters, x, y):
         })
     if not is_connected(labels > 0):
         raise ValueError(
-            "The central seed pieces do not connect; adjust their separation or grid_points."
+            "The seed compartments do not connect; adjust their separation or grid_points."
         )
     return labels, reports
 

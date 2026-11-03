@@ -21,7 +21,7 @@ def save_colony(result, output):
         writer = csv.writer(stream)
         writer.writerow([
             "chamber",
-            "formation_time",
+            "chamber_time",
             "global_time",
             "target_area",
             "diffuse_area",

@@ -6,6 +6,8 @@ each followed by a projection onto a prescribed area. u is held at 0 outside
 supplied by the caller.
 """
 
+import math
+
 import torch
 
 from .parameters import ImplementationParameters
@@ -83,7 +85,7 @@ def corrected_phase_area(phase, desired, allowed, aperture, h, newton_steps):
 
 
 def check_phase(u, edge, residual, area, q: ImplementationParameters):
-    """Raise if the phase field went bad; q is the ImplementationParameters."""
+    """Raise if the phase field went bad."""
     if not torch.isfinite(u).all():
         raise RuntimeError("Nonfinite phase field.")
     if residual > q.area_tolerance_eps * torch.finfo(u.dtype).eps * area:
@@ -104,21 +106,23 @@ def integrate(
     target,
     save_times,
     dt_max,
-    margin,
     q: ImplementationParameters,
     on_snapshot,
 ):
     """Evolve u through save_times; returns the final u, the step count and the largest area error.
 
     reaction(u, window) gives the reaction term on the current window, a pair of
-    slices; target(t) the prescribed area. on_snapshot(u, t) is called at t = 0 and at every save time.
+    slices; target(t) the prescribed area. on_snapshot(u, t) is called at t = 0
+    and at every save time.
 
-    q is the ImplementationParameters. The time stepping runs on a window around
-    the region where u > q.window_tail, widened by `margin` pixels and refitted at every save time. The window's
-    outer ring is held at u = 0, like the grid's, so the step works on it
-    unchanged. If u comes close to the window border anyway, check_phase raises.
+    The time stepping runs on a window around the region where u > q.window_tail,
+    widened by q.window_margin interface widths and refitted at every save time.
+    The window's outer ring is held at u = 0, like the grid's, so the step works
+    on it unchanged. If u comes close to the window border anyway, check_phase
+    raises.
     """
     h = q.spacing
+    margin = math.ceil(q.window_margin * q.interface_width_factor)
     t, steps = 0.0, 0
     max_error = torch.zeros((), device=u.device, dtype=u.dtype)
     on_snapshot(u, t)

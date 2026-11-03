@@ -50,8 +50,10 @@ python -m foram_colony --device cuda
 ```
 
 The default is `device="cpu"`. All computation is in float32 by default (the
-`dtype` of `ImplementationParameters`). CPU and GPU round differently, so their
-colonies can differ by a few pixels.
+`dtype` of `ImplementationParameters`). CPU and GPU round differently. Each
+aperture is placed on a single pixel, so a rounding difference can move one by
+a pixel, after which the colonies drift apart; CPU and GPU colonies can differ
+in several hundred pixels.
 
 A GPU pays off on fine grids. On the default 177×177 grid, per-step overhead
 dominates and the CPU is nearly as fast.
@@ -93,8 +95,8 @@ adjustable.
 
 The two generating discs have radii
 
-    r1 = central_radius,
-    r2 = r1 * second_piece_radius_ratio,
+    r1 = seed_radius,
+    r2 = r1 * second_disc_radius_ratio,
 
 and centre separation
 
@@ -117,21 +119,21 @@ connection between them.
 ```python
 parameters = ColonyParameters(
     seed_mode="bilocular",
-    central_radius=0.0955,
-    second_piece_radius_ratio=1.10,
+    seed_radius=0.0955,
+    second_disc_radius_ratio=1.10,
     seed_separation_fraction=0.60,
     new_chambers=6,
 )
 ```
 
 ```bash
-python -m foram_colony --seed-mode bilocular --second-piece-radius-ratio 0.85 \
+python -m foram_colony --seed-mode bilocular --second-disc-radius-ratio 0.85 \
   --seed-separation-fraction 0.60 --output output/small_pair
 ```
 
 ### Unilocular seed
 
-`seed_mode="unilocular"` uses one disc of radius `central_radius` as chamber 1.
+`seed_mode="unilocular"` uses one disc of radius `seed_radius` as chamber 1.
 Chambers 2 onward grow from it.
 
 ## What connects to what?
@@ -163,7 +165,7 @@ python -m foram_colony --adhesion-speed 0.0 --output output/no_adhesion
 parameters = ColonyParameters(
     seed_mode="unilocular",
     new_chambers=6,
-    central_radius=0.136,
+    seed_radius=0.136,
     first_chamber_area=0.0579,
     chamber_area_ratio=1.16,
     turning_angle_degrees=65.0,
@@ -188,7 +190,7 @@ parameters = ColonyParameters(
 - Time is measured in formation times: each chamber grows over one time unit,
   so chamber i forms between global times i and i + 1. Its area follows an
   illustrative normalized sigmoid with rate `growth_rate`, centred at
-  `growth_midpoint_fraction`.
+  `growth_midpoint` (a time between 0 and 1).
 - Each new chamber starts as a soft disc of `nucleus_radius`, centred
   `nucleus_offset` outward from its aperture. It is cut off
   `nucleus_cutoff_widths` (4.75) interface widths beyond its radius, where its
@@ -222,7 +224,7 @@ result = simulate_colony(ColonyParameters(chamber_areas=(0.062, 0.081, 0.099)))
 ```
 
 These are the areas of the NEW chambers only. Each must be larger than its
-initial seed and aperture.
+initial nucleus.
 
 If observations are **3D volumes**, they can't be imposed directly as planar
 areas. With a specified constant thickness h, use area = volume/h. With an
@@ -245,17 +247,16 @@ the space outside existing chambers, the provisional evolution is
           + lambda(t) u(1-u),
 
 where gamma is `curvature_coefficient` and ell is the interface width,
-`interface_width_factor` * h. The first
-two terms are the Allen–Cahn equation, which moves the interface approximately
-by curvature, at gamma * kappa. A forcing g u(1-u) moves the interface at speed
+`interface_width_factor` * h. The first two terms are the Allen–Cahn equation,
+which moves the interface approximately by curvature, at gamma * kappa. A forcing g u(1-u) moves the interface at speed
 g ell, so the adhesion moves it at adhesion_speed exp(-d_old/adhesion_range).
 Both speeds are independent of ell: the model is the limit of vanishing
 interface width, and ell, like the grid, is a numerical resolution. d_old is
-the distance to any previously completed chamber. It is
-computed exactly up to `adhesion_cutoff_ranges` (5) adhesion ranges; beyond
-that the adhesion term is set to zero, since it has already fallen below 0.7%
-of its value at the wall. The positive adhesion term raises the local drive
-near old walls.
+the distance to any previously completed chamber. It is computed exactly up to
+`adhesion_cutoff_ranges` (5) adhesion ranges; beyond that the adhesion term is
+set to zero, since it has already fallen below 0.7% of its value at the wall.
+The positive adhesion term raises the local drive near old walls.
+
 The scalar lambda is applied as a numerical correction after each time step, so
 that
 
@@ -290,8 +291,9 @@ up to the nearest achievable pixel area (aperture included). Thus:
 
 `save_colony` writes:
 
-- `area_history.csv`: chamber, local and global time, target, diffuse
-  and frozen pixel area at each snapshot.
+- `area_history.csv`: chamber, time within the chamber's formation
+  (`chamber_time`) and global time, target, diffuse and frozen pixel area at
+  each snapshot.
 - `validation.json`: both sets of parameters, seed and per-chamber reports,
   and area errors.
 - `simulation.npz`: final and initial label grids, coordinates and
@@ -309,7 +311,7 @@ up to the nearest achievable pixel area (aperture included). Thus:
 This is an exploratory geometric construction, not a validated biological
 mechanism. It does not model calcification, wall thickness, septa, chemistry,
 mechanics, cytoplasmic transport or biological aperture selection. Aperture
-placement, adhesion strength, chamber sizes and timing are inputs, not
+placement, adhesion speed, chamber sizes and timing are inputs, not
 quantities derived from data. The adhesion term is a phenomenological
 attachment preference, not a measured force. The bilocular seed is one
 adjustable two-disc construction, not a description of any particular taxon.

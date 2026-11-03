@@ -30,7 +30,7 @@ def target_area(initial_area, final_area, p: ColonyParameters):
     A sigmoid from initial_area at t = 0 to final_area at t = 1, the formation time.
     """
     def sigmoid(t):
-        return 1.0 / (1.0 + math.exp(-p.growth_rate * (t - p.growth_midpoint_fraction)))
+        return 1.0 / (1.0 + math.exp(-p.growth_rate * (t - p.growth_midpoint)))
 
     f0, f1 = sigmoid(0.0), sigmoid(1.0)
     scale = (final_area - initial_area) / (f1 - f0)
@@ -77,6 +77,7 @@ def adhesion_coefficient(p: ColonyParameters, q: ImplementationParameters):
 
 
 def double_well_coefficient(p: ColonyParameters, q: ImplementationParameters):
+    """k in the double well k u(1-u)(u-1/2), which fixes the interface width at ell."""
     return 2 * p.curvature_coefficient / q.interface_width**2
 
 
