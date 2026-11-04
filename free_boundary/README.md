@@ -93,25 +93,24 @@ chamber (deuteroloculus/deuteroconch) of one foraminifer. Their relative sizes
 and geometry vary between taxa (see References), which is why the seed is
 adjustable.
 
-The two generating discs have radii
+The two generating discs have radii $`r_1`$ (`seed_radius`) and
+$`r_2 = \rho\, r_1`$, where $`\rho`$ is `second_disc_radius_ratio`. Their centres
+are a distance
 
-    r1 = seed_radius,
-    r2 = r1 * second_disc_radius_ratio,
+```math
+d = f\,(r_1 + r_2)
+```
 
-and centre separation
-
-    d = seed_separation_fraction * (r1 + r2).
-
-The centres sit on the x axis, at -d/2 and d/2. Compartment 1 keeps its whole
-generating disc.
+apart, where $`f`$ is `seed_separation_fraction`. The centres sit on the x
+axis, at $`x = \pm d/2`$. Compartment 1 keeps its whole generating disc.
 Compartment 2 is the part of its own disc that lies outside compartment 1. So
 the interiors don't overlap, and the shared interface connects the two. The
 second compartment is usually crescent-like rather than a full disc, so the
 radius ratio is **not** an area ratio. The actual compartment areas are
 reported in `validation.json`. With the defaults they are 0.0291 and 0.0260.
 
-`seed_separation_fraction` must be between zero and one. Extreme separations or
-radius ratios can leave a compartment missing or under-resolved, and the code
+The separation fraction $`f`$ must be between zero and one. Extreme
+separations or radius ratios can leave a compartment missing or under-resolved, and the code
 rejects such cases. The grid must resolve both compartments and their contact.
 The pair is initialized all at once, and the shared interface stands in for the
 connection between them.
@@ -150,9 +149,11 @@ touch every previous chamber, which can be geometrically impossible.
 
 The next aperture is placed on the previous chamber's exposed wall, nearest a
 guide point that turns by `turning_angle_degrees` around the seed for each new
-chamber. The guide point spirals outward: for new chamber i (counting from 0)
-it lies at distance `guide_start_radius + i * guide_radius_increment` from the
-origin, at angle `i * turning_angle_degrees` counterclockwise from the +x axis.
+chamber. The guide point spirals outward: for new chamber $`i`$ (counting from 0) it
+lies at distance $`g_0 + i\,\Delta g`$ from the origin, at angle $`i\,\theta`$
+counterclockwise from the +x axis. Here $`g_0`$ is `guide_start_radius`,
+$`\Delta g`$ is `guide_radius_increment` and $`\theta`$ is
+`turning_angle_degrees`.
 
 ## Parameters
 
@@ -178,19 +179,19 @@ parameters = ColonyParameters(
 - `adhesion_speed` sets how strongly growth is drawn towards old walls: the
   speed it adds to a boundary at an old wall. Zero switches off the attraction
   but keeps the mandatory parent attachment.
-- `curvature_coefficient` sets how fast curved boundaries straighten: a
-  boundary of curvature kappa moves at `curvature_coefficient` * kappa.
+- `curvature_coefficient` ($`\gamma`$) sets how fast curved boundaries
+  straighten: a boundary of curvature $`\kappa`$ moves at $`\gamma\kappa`$.
 - `adhesion_range` sets the distance scale of the attraction.
 - `turning_angle_degrees` changes aperture placement and therefore the coiling
   arrangement.
 - `chamber_area_ratio` sets the growth in completed chamber size from one
   chamber to the next.
 - Lengths are in units of the grid's half-width: the grid always covers
-  [-1, 1] in x and in y.
+  $`[-1, 1]`$ in x and in y.
 - Time is measured in formation times: each chamber grows over one time unit,
-  so chamber i forms between global times i and i + 1. Its area follows an
-  illustrative normalized sigmoid with rate `growth_rate`, centred at
-  `growth_midpoint` (a time between 0 and 1).
+  so new chamber $`i`$ forms between global times $`i`$ and $`i + 1`$. Its area
+  follows an illustrative normalized sigmoid with rate `growth_rate`, centred
+  at `growth_midpoint` (a time between 0 and 1); see the numerical model.
 - Each new chamber starts as a soft disc of `nucleus_radius`, centred
   `nucleus_offset` outward from its aperture. It is cut off
   `nucleus_cutoff_widths` (4.75) interface widths beyond its radius, where its
@@ -226,60 +227,79 @@ result = simulate_colony(ColonyParameters(chamber_areas=(0.062, 0.081, 0.099)))
 These are the areas of the NEW chambers only. Each must be larger than its
 initial nucleus.
 
-If observations are **3D volumes**, they can't be imposed directly as planar
-areas. With a specified constant thickness h, use area = volume/h. With an
-explicit geometric-similarity assumption, use area proportional to
-volume^(2/3), with the proportionality factor supplied or calibrated. Volumes
-indexed only by completed chamber number give target final sizes. They don't
-give within-chamber formation times, which stay illustrative here.
-
 ## Numerical model
 
-The domain is the square [-1, 1]^2, sampled at `grid_points` points per side
-(177 by default), so the grid spacing is h = 2/(grid_points - 1). Each new
-chamber is represented by a phase field u(x,y,t) in [0, 1]: a smoothed
-indicator that is about 1 inside the growing chamber and about 0 outside. On
-the space outside existing chambers, the provisional evolution is
+The domain is the square $`[-1, 1]^2`$, sampled at $`N`$ = `grid_points`
+points per side (177 by default), so the grid spacing is $`h = 2/(N - 1)`$.
+Each new chamber is represented by a phase field $`u(x, y, t) \in [0, 1]`$: a
+smoothed indicator that is about 1 inside the growing chamber and about 0
+outside. On the space outside existing chambers, the provisional evolution is
 
-    u_t = gamma Laplacian(u)
-          + (2 gamma/ell^2) u(1-u)(u-1/2)
-          + (adhesion_speed/ell) exp(-d_old/adhesion_range) u(1-u)
-          + lambda(t) u(1-u),
+```math
+\partial_t u = \gamma\,\Delta u
+  + \frac{2\gamma}{\ell^2}\, u(1-u)\left(u - \tfrac{1}{2}\right)
+  + \frac{a}{\ell}\, e^{-d_\mathrm{old}/R}\, u(1-u)
+  + \lambda(t)\, u(1-u),
+```
 
-where gamma is `curvature_coefficient` and ell is the interface width,
-`interface_width_factor` * h. The first two terms are the Allen–Cahn equation,
-which moves the interface approximately by curvature, at gamma * kappa. A forcing g u(1-u) moves the interface at speed
-g ell, so the adhesion moves it at adhesion_speed exp(-d_old/adhesion_range).
-Both speeds are independent of ell: the model is the limit of vanishing
-interface width, and ell, like the grid, is a numerical resolution. d_old is
-the distance to any previously completed chamber. It is computed exactly up to
+where $`\gamma`$ is `curvature_coefficient`, $`a`$ is `adhesion_speed`, $`R`$ is
+`adhesion_range`, and $`\ell`$ is the interface width, `interface_width_factor`
+times $`h`$. $`d_\mathrm{old}`$ is the distance to any previously completed
+chamber.
+
+The first two terms are the Allen–Cahn equation, which moves the interface
+approximately by curvature, at speed $`\gamma\kappa`$. A forcing
+$`g\,u(1-u)`$ moves the interface at speed $`g\ell`$, so the adhesion moves it
+at $`a\,e^{-d_\mathrm{old}/R}`$. Both speeds are independent of $`\ell`$: the
+model is the limit of vanishing interface width, and $`\ell`$, like the grid,
+is a numerical resolution. $`d_\mathrm{old}`$ is computed exactly up to
 `adhesion_cutoff_ranges` (5) adhesion ranges; beyond that the adhesion term is
 set to zero, since it has already fallen below 0.7% of its value at the wall.
 The positive adhesion term raises the local drive near old walls.
 
-The scalar lambda is applied as a numerical correction after each time step, so
-that
+The scalar $`\lambda`$ is applied as a numerical correction after each time
+step, so that
 
-    h^2 * sum(u) = prescribed_area(t).
+```math
+h^2 \sum_\text{pixels} u = A(t).
+```
 
-u = 0 inside earlier chambers and at the outer computational edge. u = 1 on the
-chosen aperture patch, just outside the parent wall. These values are held
-fixed while the current chamber grows. A compactly supported initial seed
-prevents spontaneous nucleation far away. The Laplacian is the nine-point
-stencil [[1, 4, 1], [4, -20, 4], [1, 4, 1]] / (6 h^2), whose leading
-error term is rotation invariant, so interfaces move nearly alike in every
-direction on the grid. Time stepping is explicit, with a timestep cap set by
-the diffusive and reaction stability limits.
-Each step is computed only on a window around the growing chamber, refitted at
-every snapshot, with a margin wide enough that u stays negligible at its
-border. If u does reach the border, the run stops with an error.
+The prescribed area $`A(t)`$ rises from the nucleus area $`A_0`$ at $`t = 0`$ to
+the chamber's final area $`A_1`$ at $`t = 1`$, along a normalized sigmoid:
+
+```math
+A(t) = A_0 + (A_1 - A_0)\,\frac{\sigma(t) - \sigma(0)}{\sigma(1) - \sigma(0)},
+\qquad
+\sigma(t) = \frac{1}{1 + e^{-k\,(t - t_\mathrm{m})}},
+```
+
+where $`k`$ is `growth_rate` and $`t_\mathrm{m}`$ is `growth_midpoint`.
+
+$`u = 0`$ inside earlier chambers and at the outer computational edge, and
+$`u = 1`$ on the chosen aperture patch, just outside the parent wall. These
+values are held fixed while the current chamber grows. A compactly supported
+nucleus prevents spontaneous nucleation far away. The Laplacian is the nine-point
+stencil
+
+```math
+\Delta u \approx \frac{1}{6h^2}
+\begin{bmatrix} 1 & 4 & 1 \\ 4 & -20 & 4 \\ 1 & 4 & 1 \end{bmatrix} * u,
+```
+
+whose leading error term, $`\tfrac{h^2}{12}\Delta^2 u`$, is rotation invariant,
+so interfaces move nearly alike in every direction on the grid. Time stepping
+is explicit, with a timestep cap set by the diffusive and reaction stability
+limits. Each step is computed only on a window around the growing chamber,
+refitted at every snapshot, with a margin wide enough that $`u`$ stays
+negligible at its border. If $`u`$ does reach the border, the run stops with an
+error.
 
 When a chamber is frozen, it takes the pixels with the highest phase values,
 up to the nearest achievable pixel area (aperture included). Thus:
 
 - the diffuse area is enforced to floating-point tolerance;
 - the frozen/displayed area differs from the requested value by at most
-  h^2/2 (6.5e-5 on the default grid);
+  $`h^2/2`$ ($`6.5 \times 10^{-5}`$ on the default grid);
 - every frozen chamber is checked for 4-neighbour connectedness;
 - each frozen chamber touches its parent by construction, as it contains the aperture;
 - older labels are immobile by construction: a new chamber can only claim
